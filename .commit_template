@@ -1,0 +1,27 @@
+# 提交消息规范 (Conventional Commits)
+# 格式: <类型>(<范围>): <描述>
+# 
+# 类型必须是以下之一:
+#   feat:     新功能
+#   fix:      修复bug
+#   docs:     文档更新
+#   style:    代码格式调整（不影响功能）
+#   refactor: 代码重构（不添加功能也不修复bug）
+#   test:     测试相关
+#   chore:    构建过程或辅助工具的变动
+#   perf:     性能优化
+#   ci:       CI/CD相关
+#   build:    构建系统或外部依赖变更
+# 
+# 范围是可选的，表示影响的模块，如:
+#   core, api, web, config, docs, etc.
+# 
+# 描述: 简短的描述性文字，使用中文或英文
+# 
+# 示例:
+#   feat(core): 添加追盘日扫描器v2
+#   fix(api): 修复抛盘日API 404错误
+#   docs: 更新README安装说明
+#   chore: 更新依赖版本
+#
+# 请在上面空白行后编写提交消息（删除这些注释）
