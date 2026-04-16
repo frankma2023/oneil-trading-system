@@ -1,0 +1,138 @@
+<!-- ====== 暗夜热力图导航栏组件 ====== -->
+<!-- 将此组件插入到每个页面的<body>标签开头 -->
+
+<!-- 主导航容器 -->
+<div class="dark-nav-container">
+    <nav class="dark-nav">
+        <!-- 品牌区域 -->
+        <div class="nav-brand">
+            <div class="nav-logo glow-animation">🔍</div>
+            <div>
+                <div class="nav-title">暗夜热力图 · A股分析系统</div>
+                <div class="nav-subtitle">深色主题 · 红涨绿跌 · 实时监控</div>
+            </div>
+        </div>
+        
+        <!-- 桌面端导航链接 -->
+        <div class="nav-links">
+            <a href="market_dashboard.html" class="nav-link" data-page="market">
+                <span class="nav-link-icon">📊</span>
+                <span>大盘扫描</span>
+            </a>
+            <a href="sector_scan_dashboard.html" class="nav-link" data-page="sector">
+                <span class="nav-link-icon">🏢</span>
+                <span>行业扫描</span>
+            </a>
+            <a href="stock_screening_dashboard.html" class="nav-link" data-page="stock">
+                <span class="nav-link-icon">🔍</span>
+                <span>个股扫描</span>
+            </a>
+            <a href="sell_signal.html" class="nav-link" data-page="sell">
+                <span class="nav-link-icon">🚨</span>
+                <span>持仓哨兵</span>
+            </a>
+            <a href="portfolio.html" class="nav-link" data-page="portfolio">
+                <span class="nav-link-icon">📈</span>
+                <span>投资组合</span>
+            </a>
+            <a href="backtest.html" class="nav-link" data-page="backtest">
+                <span class="nav-link-icon">🧪</span>
+                <span>策略回测</span>
+            </a>
+        </div>
+        
+        <!-- 控制区域 -->
+        <div class="nav-controls">
+            <!-- 日期选择器 -->
+            <div class="date-picker-container">
+                <button id="datePickerBtn" class="date-picker-btn">
+                    <span class="icon">📅</span>
+                    <span id="dateDisplay">今日</span>
+                </button>
+                <div id="datePickerDropdown" class="date-picker-dropdown">
+                    <div class="date-picker-header">
+                        <div id="currentMonthYear" class="date-picker-title">2025年4月</div>
+                        <div class="date-picker-nav">
+                            <button id="prevMonthBtn" class="date-picker-nav-btn">‹</button>
+                            <button id="nextMonthBtn" class="date-picker-nav-btn">›</button>
+                        </div>
+                    </div>
+                    <div id="datePickerGrid" class="date-picker-grid">
+                        <!-- 日历将通过JavaScript动态生成 -->
+                    </div>
+                    <div class="date-picker-quick-actions">
+                        <button id="quickToday" class="date-picker-quick-action">今日</button>
+                        <button id="quickYesterday" class="date-picker-quick-action">昨日</button>
+                        <button id="quickWeekAgo" class="date-picker-quick-action">一周前</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="nav-divider"></div>
+            
+            <!-- 操作按钮 -->
+            <button class="nav-action-btn" id="refreshBtn">
+                <span class="nav-action-btn-icon">🔄</span>
+                <span>刷新</span>
+            </button>
+            
+            <button class="nav-action-btn" id="themeBtn">
+                <span class="nav-action-btn-icon">🌙</span>
+                <span>主题</span>
+            </button>
+            
+            <!-- 移动端菜单按钮 -->
+            <button id="navMenuBtn" class="nav-menu-btn">
+                ☰
+            </button>
+        </div>
+    </nav>
+</div>
+
+<!-- 移动端菜单 -->
+<div id="navMobileMenu" class="nav-mobile-menu">
+    <div class="nav-mobile-links">
+        <a href="market_dashboard.html" class="nav-mobile-link" data-page="market">
+            <span class="nav-mobile-link-icon">📊</span>
+            <span>大盘扫描</span>
+        </a>
+        <a href="sector_scan_dashboard.html" class="nav-mobile-link" data-page="sector">
+            <span class="nav-mobile-link-icon">🏢</span>
+            <span>行业扫描</span>
+        </a>
+        <a href="stock_screening_dashboard.html" class="nav-mobile-link" data-page="stock">
+            <span class="nav-mobile-link-icon">🔍</span>
+            <span>个股扫描</span>
+        </a>
+        <a href="sell_signal.html" class="nav-mobile-link" data-page="sell">
+            <span class="nav-mobile-link-icon">🚨</span>
+            <span>持仓哨兵</span>
+        </a>
+        <a href="portfolio.html" class="nav-mobile-link" data-page="portfolio">
+            <span class="nav-mobile-link-icon">📈</span>
+            <span>投资组合</span>
+        </a>
+        <a href="backtest.html" class="nav-mobile-link" data-page="backtest">
+            <span class="nav-mobile-link-icon">🧪</span>
+            <span>策略回测</span>
+        </a>
+    </div>
+    
+    <div style="padding: var(--space-lg); border-top: 1px solid var(--border-light); margin-top: var(--space-xl);">
+        <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-bottom: var(--space-sm);">系统信息</div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
+            <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--text-secondary);">当前时间</span>
+                <span id="currentTime" style="font-family: var(--font-mono); color: var(--text-primary);">--:--:--</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--text-secondary);">数据版本</span>
+                <span style="font-family: var(--font-mono); color: var(--text-primary);">2025.04.13</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--text-secondary);">用户状态</span>
+                <span style="color: var(--signal-safe);">● 在线</span>
+            </div>
+        </div>
+    </div>
+</div>

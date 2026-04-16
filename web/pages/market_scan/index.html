@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大盘扫描 · 欧奈尔投资系统</title>
+    
+    <!-- Google字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- ECharts图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    
+    <!-- 统一设计系统 -->
+    <link rel="stylesheet" href="/static/css/dark_theme.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    
+    <!-- Axios HTTP客户端 -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <style>
+        /* 抛盘日分析页面特定样式 */
+        .index-card {
+            background: var(--surface-card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+            border: var(--glass-border);
+            transition: var(--transition-fast);
+        }
+        
+        .index-card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .index-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .index-name {
+            font-size: var(--text-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+        
+        .index-code {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-md);
+            border: var(--glass-border);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-full);
+            font-size: var(--text-sm);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .status-normal {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: var(--signal-safe);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+        
+        .status-pressure {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.15));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: var(--signal-warning);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+        }
+        
+        .status-bear {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: var(--signal-danger);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+        }
+        
+        .distribution-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .stat-card {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            text-align: center;
+            border: var(--glass-border);
+        }
+        
+        .stat-title {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: var(--text-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .stat-subtitle {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+        }
+        
+        .distribution-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        
+        .type-card {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+            border: var(--glass-border);
+        }
+        
+        .type-name {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .type-count {
+            font-family: var(--font-mono);
+            font-size: var(--text-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+        
+        .recommendation-card {
+            background: linear-gradient(135deg, var(--surface-glass), rgba(96, 165, 250, 0.1));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-top: var(--space-xl);
+            border: var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .recommendation-title {
+            font-size: var(--text-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--data-positive);
+            margin-bottom: var(--space-md);
+        }
+        
+        .recommendation-text {
+            font-size: var(--text-md);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .date-range-selector {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+        }
+        
+        .date-btn {
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-md);
+            border: var(--glass-border);
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: var(--text-tertiary);
+            font-size: var(--text-xs);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .date-btn:hover {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(167, 139, 250, 0.1));
+            color: var(--data-positive);
+            border-color: rgba(96, 165, 250, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .date-btn.active {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(167, 139, 250, 0.15));
+            color: var(--data-positive);
+            border-color: rgba(96, 165, 250, 0.4);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.2);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid transparent;
+            border-top-color: var(--data-positive);
+            border-right-color: var(--data-positive);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: relative;
+        }
+        
+        .loading-spinner::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: rgba(96, 165, 250, 0.3);
+            animation: spin 1.5s linear infinite reverse;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .combined-status {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: var(--space-2xl) 0;
+        }
+        
+        .combined-card {
+            max-width: 600px;
+            width: 100%;
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, var(--surface-glass), rgba(96, 165, 250, 0.1));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .combined-title {
+            font-size: var(--text-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .combined-value {
+            font-family: var(--font-mono);
+            font-size: var(--text-4xl);
+            font-weight: var(--font-weight-bold);
+            margin-bottom: var(--space-md);
+        }
+        
+        .combined-value.normal {
+            color: var(--signal-safe);
+        }
+        
+        .combined-value.pressure {
+            color: var(--signal-warning);
+        }
+        
+        .combined-value.bear {
+            color: var(--signal-danger);
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin: var(--space-xl) 0;
+            background: var(--surface-card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-lg);
+            border: var(--glass-border);
+            padding: var(--space-lg);
+        }
+        
+        /* 微妙的动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(96, 165, 250, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+            }
+        }
+        
+        .combined-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .index-card {
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .stat-card {
+            animation: fadeInUp 1s ease-out;
+        }
+        
+        .status-badge.active-alert {
+            animation: pulseGlow 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="unified-nav">
+        <!-- 导航栏将由JavaScript注入 -->
+    </nav>
+    
+    <!-- 加载动画 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div class="app-container">
+        <!-- 主内容 -->
+        <main class="app-main container">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h1 class="page-title">大盘扫描 · 抛盘日分析</h1>
+                <div class="page-subtitle">
+                    基于欧奈尔抛盘日理论，分析市场承压状态和风险水平
+                </div>
+            </div>
+            
+            <!-- 日期选择器 -->
+            <div class="date-range-selector">
+                <div style="font-size: var(--text-sm); color: var(--text-secondary);">分析时间段:</div>
+                <button class="date-btn active" data-days="30">近30日</button>
+                <button class="date-btn" data-days="60">近60日</button>
+                <button class="date-btn" data-days="90">近90日</button>
+                <button class="date-btn" data-days="180">近半年</button>
+                
+                <div style="margin-left: auto; display: flex; gap: var(--space-sm); align-items: center;">
+                    <span style="font-size: var(--text-sm); color: var(--text-secondary);">数据截至:</span>
+                    <input type="date" id="endDate" class="input input-sm" style="width: 140px;">
+                    <button id="refreshBtn" class="btn btn-sm">
+                        <span>刷新分析</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 综合状态 -->
+            <div class="combined-status">
+                <div class="combined-card">
+                    <div class="combined-title">市场综合状态</div>
+                    <div id="combinedValue" class="combined-value normal">--</div>
+                    <div id="combinedStatus" style="font-size: var(--text-lg); color: var(--text-secondary); margin-bottom: var(--space-md);">
+                        加载中...
+                    </div>
+                    <div id="combinedRecommendation" style="font-size: var(--text-md); color: var(--text-tertiary);">
+                        基于中证全指和沪深300的抛盘日分析
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 中证全指分析 -->
+            <div class="index-card">
+                <div class="index-header">
+                    <div>
+                        <div class="index-name">中证全指</div>
+                        <div class="index-code">000985 · 全市场指数</div>
+                    </div>
+                    <div id="status985" class="status-badge status-normal">正常状态</div>
+                </div>
+                
+                <div class="distribution-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">抛盘日总数</div>
+                        <div id="total985" class="stat-value">--</div>
+                        <div class="stat-subtitle">最近25个交易日</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">加权总数</div>
+                        <div id="weighted985" class="stat-value">--</div>
+                        <div class="stat-subtitle">重抛盘日计为2个</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">确认日</div>
+                        <div id="confirmation985" class="stat-value">--</div>
+                        <div class="stat-subtitle">可抵消抛盘日</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-lg);">
+                    <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-md);">
+                        抛盘日类型分布
+                    </div>
+                    <div class="distribution-type-grid">
+                        <div class="type-card">
+                            <div class="type-name">标准抛盘日</div>
+                            <div id="standard985" class="type-count">--</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-name">特殊抛盘日</div>
+                            <div id="special985" class="type-count">--</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-name">盘中反转</div>
+                            <div id="reversal985" class="type-count">--</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-name">重抛盘日</div>
+                            <div id="heavy985" class="type-count">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 推荐 -->
+                <div class="recommendation-card">
+                    <div class="recommendation-title" id="recommendationTitle985">市场分析</div>
+                    <div class="recommendation-text" id="recommendationText985">
+                        正在分析市场数据...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 沪深300分析 -->
+            <div class="index-card">
+                <div class="index-header">
+                    <div>
+                        <div class="index-name">沪深300</div>
+                        <div class="index-code">000300 · 蓝筹股指数</div>
+                    </div>
+                    <div id="status300" class="status-badge status-normal">正常状态</div>
+                </div>
+                
+                <div class="distribution-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">抛盘日总数</div>
+                        <div id="total300" class="stat-value">--</div>
+                        <div class="stat-subtitle">最近25个交易日</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">加权总数</div>
+                        <div id="weighted300" class="stat-value">--</div>
+                        <div class="stat-subtitle">重抛盘日计为2个</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">确认日</div>
+                        <div id="confirmation300" class="stat-value">--</div>
+                        <div class="stat-subtitle">可抵消抛盘日</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-lg);">
+                    <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-md);">
+                        抛盘日类型分布
+                    </div>
+                    <div class="distribution-type-grid">
+                        <div class="type-card">
+                            <div class="type-name">标准抛盘日</div>
+                            <div id="standard300" class="type-count">--</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-name">特殊抛盘日</div>
+                            <div id="special300" class="type-count">--</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-name">盘中反转</div>
+                            <div id="reversal300" class="type-count">--</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-name">重抛盘日</div>
+                            <div id="heavy300" class="type-count">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 推荐 -->
+                <div class="recommendation-card">
+                    <div class="recommendation-title" id="recommendationTitle300">市场分析</div>
+                    <div class="recommendation-text" id="recommendationText300">
+                        正在分析市场数据...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 抛盘日趋势图表 -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span>📈</span>
+                    抛盘日趋势分析
+                </h2>
+                
+                <div class="chart-container" id="distributionChart"></div>
+                
+                <div style="text-align: center; margin-top: var(--space-md);">
+                    <div style="font-size: var(--text-sm); color: var(--text-tertiary);">
+                        显示最近60个交易日的抛盘日累计数量变化
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 抛盘日规则说明 -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span>📋</span>
+                    抛盘日规则说明
+                </h2>
+                
+                <div class="grid-cards grid-cards-3">
+                    <div class="card">
+                        <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-sm);">
+                            标准抛盘日
+                        </div>
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">
+                            当日下跌（涨幅 ≤ -0.1%）且成交量 > 前一日
+                        </div>
+                        <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-top: var(--space-sm);">
+                            核心条件：放量下跌
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-sm);">
+                            特殊抛盘日
+                        </div>
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">
+                            收涨但涨幅 < 0.2%，成交量放大1.3倍，上影线足够长
+                        </div>
+                        <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-top: var(--space-sm);">
+                            核心条件：冲高回落，放量滞涨
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-sm);">
+                            盘中反转抛盘日
+                        </div>
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">
+                            收阴，成交量放大1.2倍，上影线足够长，盘中曾冲高
+                        </div>
+                        <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-top: var(--space-sm);">
+                            核心条件：诱多后下跌，放量收阴
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 追盘日分析 -->
+                <div class="index-card" style="margin-top: var(--space-xl);">
+                    <div class="index-header">
+                        <div>
+                            <div class="index-name">追盘日分析</div>
+                            <div class="index-code">中证全指 · 欧奈尔市场反转信号</div>
+                        </div>
+                        <div id="followthroughStatus" class="status-badge status-normal">等待分析</div>
+                    </div>
+                    
+                    <div class="distribution-stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-title">追盘日总数</div>
+                            <div id="followthroughTotal" class="stat-value">--</div>
+                            <div class="stat-subtitle">最近50个交易日</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-title">已确认追盘日</div>
+                            <div id="followthroughConfirmed" class="stat-value">--</div>
+                            <div class="stat-subtitle">后续交易日验证</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-title">确认率</div>
+                            <div id="followthroughConfirmationRate" class="stat-value">--</div>
+                            <div class="stat-subtitle">有效信号比例</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-title">最新追盘日</div>
+                            <div id="latestFollowthrough" class="stat-value" style="font-size: var(--text-lg);">--</div>
+                            <div class="stat-subtitle">最近一次信号</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: var(--space-lg);">
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-md);">
+                            追盘日类型分布
+                        </div>
+                        <div class="distribution-type-grid">
+                            <div class="type-card">
+                                <div class="type-name">标准追盘日</div>
+                                <div id="followthroughStandard" class="type-count">--</div>
+                            </div>
+                            <div class="type-card">
+                                <div class="type-name">强势追盘日</div>
+                                <div id="followthroughStrong" class="type-count">--</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 追盘日规则 -->
+                    <div style="margin-top: var(--space-lg); padding: var(--space-md); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-md);">
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.6;">
+                            <strong>欧奈尔追盘日定义：</strong>市场下跌后，尝试反弹的第4-7个交易日，涨幅≥1.5%且放量，为潜在牛市反转信号。
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-xl); padding: var(--space-lg); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-lg);">
+                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-md);">
+                        重要规则
+                    </div>
+                    <ul style="color: var(--text-secondary); line-height: 1.6; padding-left: var(--space-lg);">
+                        <li style="margin-bottom: var(--space-sm);">
+                            <span style="color: var(--text-tertiary);">平盘日过滤：</span>
+                            涨跌幅绝对值 < 0.05% 的交易日不计为任何抛盘日
+                        </li>
+                        <li style="margin-bottom: var(--space-sm);">
+                            <span style="color: var(--text-tertiary);">多重计数：</span>
+                            单日跌幅 ≥ -1.5% 且放量，计为 2个抛盘日
+                        </li>
+                        <li style="margin-bottom: var(--space-sm);">
+                            <span style="color: var(--text-tertiary);">确认日抵消：</span>
+                            涨幅 ≥ 1.5% 且放量，可抵消 1个抛盘日
+                        </li>
+                        <li style="margin-bottom: var(--space-sm);">
+                            <span style="color: var(--text-tertiary);">25日窗口：</span>
+                            严格滚动 25 个交易日统计
+                        </li>
+                        <li>
+                            <span style="color: var(--text-tertiary);">市场状态：</span>
+                            抛盘日≥5:承压状态，抛盘日≥8:熊市状态
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 页脚 -->
+        <footer style="padding: var(--space-xl) 0; border-top: 1px solid var(--border-light); margin-top: var(--space-3xl);">
+            <div class="container" style="text-align: center;">
+                <div style="font-size: var(--text-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">
+                    欧奈尔投资系统 · 抛盘日分析模块
+                </div>
+                <div style="font-size: var(--text-xs); color: var(--text-muted);">
+                    数据来源：理杏仁API · 分析算法：严格按照《抛盘日定义.md》实现 · 本页面数据仅供参考，不构成投资建议
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- 统一导航脚本 -->
+    <script src="/static/js/nav.js"></script>
+    
+    <!-- 大盘扫描页面JavaScript -->
+    <script>
+        // 页面状态
+        const state = {
+            currentDays: 30,
+            endDate: null,
+            data: null,
+            chart: null
+        };
+        
+        // DOM元素
+        const elements = {
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            
+            // 综合状态
+            combinedValue: document.getElementById('combinedValue'),
+            combinedStatus: document.getElementById('combinedStatus'),
+            combinedRecommendation: document.getElementById('combinedRecommendation'),
+            
+            // 中证全指
+            status985: document.getElementById('status985'),
+            total985: document.getElementById('total985'),
+            weighted985: document.getElementById('weighted985'),
+            confirmation985: document.getElementById('confirmation985'),
+            standard985: document.getElementById('standard985'),
+            special985: document.getElementById('special985'),
+            reversal985: document.getElementById('reversal985'),
+            heavy985: document.getElementById('heavy985'),
+            recommendationTitle985: document.getElementById('recommendationTitle985'),
+            recommendationText985: document.getElementById('recommendationText985'),
+            
+            // 沪深300
+            status300: document.getElementById('status300'),
+            total300: document.getElementById('total300'),
+            weighted300: document.getElementById('weighted300'),
+            confirmation300: document.getElementById('confirmation300'),
+            standard300: document.getElementById('standard300'),
+            special300: document.getElementById('special300'),
+            reversal300: document.getElementById('reversal300'),
+            heavy300: document.getElementById('heavy300'),
+            recommendationTitle300: document.getElementById('recommendationTitle300'),
+            recommendationText300: document.getElementById('recommendationText300'),
+            
+            // 追盘日分析
+            followthroughStatus: document.getElementById('followthroughStatus'),
+            followthroughTotal: document.getElementById('followthroughTotal'),
+            followthroughConfirmed: document.getElementById('followthroughConfirmed'),
+            followthroughConfirmationRate: document.getElementById('followthroughConfirmationRate'),
+            latestFollowthrough: document.getElementById('latestFollowthrough'),
+            followthroughStandard: document.getElementById('followthroughStandard'),
+            followthroughStrong: document.getElementById('followthroughStrong'),
+            
+            // 图表
+            distributionChart: document.getElementById('distributionChart'),
+            
+            // 控件
+            endDateInput: document.getElementById('endDate'),
+            refreshBtn: document.getElementById('refreshBtn')
+        };
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            initPage();
+            bindEvents();
+            loadData();
+        });
+        
+        function initPage() {
+            // 设置默认结束日期为今天
+            const today = new Date();
+            elements.endDateInput.value = today.toISOString().split('T')[0];
+            state.endDate = elements.endDateInput.value;
+            
+            // 初始化图表
+            initChart();
+        }
+        
+        function bindEvents() {
+            // 日期按钮
+            document.querySelectorAll('.date-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    state.currentDays = parseInt(this.dataset.days);
+                    loadData();
+                });
+            });
+            
+            // 结束日期选择
+            elements.endDateInput.addEventListener('change', function() {
+                state.endDate = this.value;
+                loadData();
+            });
+            
+            // 刷新按钮
+            elements.refreshBtn.addEventListener('click', loadData);
+        }
+        
+        function initChart() {
+            if (!window.echarts) return;
+            
+            state.chart = echarts.init(elements.distributionChart);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    borderColor: 'var(--border-glow)',
+                    textStyle: {
+                        color: 'var(--text-secondary)',
+                        fontFamily: 'var(--font-body)'
+                    }
+                },
+                legend: {
+                    data: ['中证全指', '沪深300'],
+                    textStyle: {
+                        color: 'var(--text-tertiary)'
+                    },
+                    top: 10
+                },
+                xAxis: {
+                    type: 'category',
+                    data: [],
+                    axisLine: {
+                        lineStyle: {
+                            color: 'var(--border-light)'
+                        }
+                    },
+                    axisLabel: {
+                        color: 'var(--text-tertiary)'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '抛盘日累计数',
+                    axisLine: {
+                        lineStyle: {
+                            color: 'var(--border-light)'
+                        }
+                    },
+                    axisLabel: {
+                        color: 'var(--text-tertiary)'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'var(--border-light)',
+                            opacity: 0.3
+                        }
+                    }
+                },
+                series: [
+                    {
+                        name: '中证全指',
+                        type: 'line',
+                        data: [],
+                        smooth: true,
+                        lineStyle: {
+                            width: 3,
+                            color: 'var(--data-positive)'
+                        },
+                        itemStyle: {
+                            color: 'var(--data-positive)'
+                        }
+                    },
+                    {
+                        name: '沪深300',
+                        type: 'line',
+                        data: [],
+                        smooth: true,
+                        lineStyle: {
+                            width: 3,
+                            color: 'var(--signal-highlight)'
+                        },
+                        itemStyle: {
+                            color: 'var(--signal-highlight)'
+                        }
+                    }
+                ]
+            };
+            
+            state.chart.setOption(option);
+        }
+        
+        function showLoading() {
+            elements.loadingOverlay.classList.add('show');
+        }
+        
+        function hideLoading() {
+            elements.loadingOverlay.classList.remove('show');
+        }
+        
+        async function loadData() {
+            showLoading();
+            
+            try {
+                // 获取抛盘日摘要
+                const summaryResponse = await axios.get(`/api/distribution/summary?days=${state.currentDays}`);
+                const summaryData = summaryResponse.data;
+                
+                // 获取详细分析
+                const analysisResponse = await axios.get(`/api/distribution/analyze?days=${state.currentDays}`);
+                const analysisData = analysisResponse.data;
+                
+                // 获取追盘日摘要（默认50天窗口）
+                const followthroughResponse = await axios.get('/api/followthrough/summary?window_days=50');
+                const followthroughData = followthroughResponse.data;
+                
+                state.data = {
+                    summary: summaryData,
+                    analysis: analysisData,
+                    followthrough: followthroughData
+                };
+                
+                updateUI();
+                updateChart();
+                
+            } catch (error) {
+                console.error('数据加载失败:', error);
+                showError('数据加载失败，请检查网络连接或稍后重试');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function updateUI() {
+            if (!state.data) return;
+            
+            const { summary, analysis } = state.data;
+            
+            // 更新综合状态
+            updateCombinedStatus(summary);
+            
+            // 更新中证全指数据
+            updateIndexData('985', summary, analysis);
+            
+            // 更新沪深300数据
+            updateIndexData('300', summary, analysis);
+            
+            // 更新追盘日数据
+            if (state.data.followthrough) {
+                updateFollowthroughData(state.data.followthrough);
+            }
+        }
+        
+        function updateFollowthroughData(followthroughData) {
+            if (!followthroughData) return;
+            
+            // 从API响应中提取数据，使用默认值
+            const followthroughDays = followthroughData.followthrough_days_count || 0;
+            const confirmedDays = followthroughData.confirmed_days_count || 0;
+            const confirmationRate = followthroughData.confirmation_rate || 0;
+            const latestFollowthrough = followthroughData.latest_followthrough || '无';
+            const marketStatus = followthroughData.current_market_status || '未知';
+            
+            // 更新状态徽章
+            elements.followthroughStatus.className = 'status-badge';
+            if (marketStatus === '熊市状态') {
+                elements.followthroughStatus.classList.add('status-bear');
+                elements.followthroughStatus.textContent = '熊市状态';
+            } else if (marketStatus === '承压状态') {
+                elements.followthroughStatus.classList.add('status-pressure');
+                elements.followthroughStatus.textContent = '承压状态';
+            } else {
+                elements.followthroughStatus.classList.add('status-normal');
+                elements.followthroughStatus.textContent = '正常状态';
+            }
+            
+            // 更新统计数据
+            elements.followthroughTotal.textContent = followthroughDays;
+            elements.followthroughConfirmed.textContent = confirmedDays;
+            elements.followthroughConfirmationRate.textContent = (confirmationRate * 100).toFixed(1) + '%';
+            elements.latestFollowthrough.textContent = latestFollowthrough;
+            
+            // 类型分布（摘要中可能没有，显示默认值）
+            elements.followthroughStandard.textContent = followthroughData.standard_days_count || '--';
+            elements.followthroughStrong.textContent = followthroughData.strong_days_count || '--';
+            
+            // 类型分布可能不在摘要中，留空或从详细数据获取
+            // elements.followthroughStandard.textContent = '--';
+            // elements.followthroughStrong.textContent = '--';
+        }
+        
+        function updateCombinedStatus(summary) {
+            const status = summary.combined_status;
+            const avgDistribution = summary.average_distribution;
+            const recommendation = summary.recommendation;
+            
+            // 更新综合值
+            elements.combinedValue.textContent = avgDistribution.toFixed(1);
+            elements.combinedValue.className = 'combined-value';
+            
+            if (status === '熊市状态') {
+                elements.combinedValue.classList.add('bear');
+                elements.combinedStatus.textContent = '熊市状态';
+                elements.combinedStatus.style.color = 'var(--signal-danger)';
+            } else if (status === '承压状态') {
+                elements.combinedValue.classList.add('pressure');
+                elements.combinedStatus.textContent = '承压状态';
+                elements.combinedStatus.style.color = 'var(--signal-warning)';
+            } else {
+                elements.combinedValue.classList.add('normal');
+                elements.combinedStatus.textContent = '正常状态';
+                elements.combinedStatus.style.color = 'var(--signal-safe)';
+            }
+            
+            elements.combinedRecommendation.textContent = recommendation;
+        }
+        
+        function updateIndexData(indexSuffix, summary, analysis) {
+            const indexCode = indexSuffix === '985' ? '000985' : '000300';
+            const indexSummary = summary.indices?.[indexCode];
+            const indexAnalysis = analysis.results?.[indexCode];
+            
+            if (!indexSummary || !indexAnalysis) return;
+            
+            const stats = indexSummary.stats || {};
+            const marketStatus = indexSummary.market_status || '未知';
+            
+            // 更新状态徽章
+            const statusElement = elements[`status${indexSuffix}`];
+            statusElement.className = 'status-badge';
+            
+            if (marketStatus === '熊市状态') {
+                statusElement.classList.add('status-bear');
+                statusElement.textContent = '熊市状态';
+            } else if (marketStatus === '承压状态') {
+                statusElement.classList.add('status-pressure');
+                statusElement.textContent = '承压状态';
+            } else {
+                statusElement.classList.add('status-normal');
+                statusElement.textContent = '正常状态';
+            }
+            
+            // 更新统计数据
+            elements[`total${indexSuffix}`].textContent = stats.raw_total || '--';
+            elements[`weighted${indexSuffix}`].textContent = stats.weighted_total || '--';
+            elements[`confirmation${indexSuffix}`].textContent = stats.confirmation_days || '0';
+            
+            elements[`standard${indexSuffix}`].textContent = stats.standard || '--';
+            elements[`special${indexSuffix}`].textContent = stats.special || '--';
+            elements[`reversal${indexSuffix}`].textContent = stats.intraday_reversal || '--';
+            elements[`heavy${indexSuffix}`].textContent = '--'; // 需要从详细数据中获取
+            
+            // 更新推荐
+            const recommendationTitle = elements[`recommendationTitle${indexSuffix}`];
+            const recommendationText = elements[`recommendationText${indexSuffix}`];
+            
+            const distributionTotal = stats.weighted_total || 0;
+            
+            if (distributionTotal >= 8) {
+                recommendationTitle.textContent = '⚠️ 高风险警告';
+                recommendationTitle.style.color = 'var(--signal-danger)';
+                recommendationText.textContent = `抛盘日总数${distributionTotal}个，市场处于熊市状态。建议暂停选股，降低仓位，等待市场企稳。`;
+            } else if (distributionTotal >= 5) {
+                recommendationTitle.textContent = '⚠️ 市场承压';
+                recommendationTitle.style.color = 'var(--signal-warning)';
+                recommendationText.textContent = `抛盘日总数${distributionTotal}个，市场处于承压状态。建议谨慎选股，控制仓位，密切关注市场变化。`;
+            } else {
+                recommendationTitle.textContent = '✅ 市场正常';
+                recommendationTitle.style.color = 'var(--signal-safe)';
+                recommendationText.textContent = `抛盘日总数${distributionTotal}个，市场处于正常状态。可以正常选股，但仍需关注市场变化。`;
+            }
+        }
+        
+        function updateChart() {
+            if (!state.chart || !state.data || !state.data.analysis) return;
+            
+            // 这里需要从分析数据中提取时间序列数据
+            // 暂时使用模拟数据
+            const dates = [];
+            const data985 = [];
+            const data300 = [];
+            
+            // 生成模拟数据（实际应该从API获取）
+            for (let i = 0; i < 60; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - (60 - i));
+                dates.push(date.toISOString().split('T')[0]);
+                
+                // 模拟抛盘日累计数
+                data985.push(Math.floor(Math.random() * 10));
+                data300.push(Math.floor(Math.random() * 8));
+            }
+            
+            const option = {
+                xAxis: {
+                    data: dates
+                },
+                series: [
+                    {
+                        name: '中证全指',
+                        data: data985
+                    },
+                    {
+                        name: '沪深300',
+                        data: data300
+                    }
+                ]
+            };
+            
+            state.chart.setOption(option);
+        }
+        
+        function showError(message) {
+            // 可以添加更复杂的错误处理
+            alert(message);
+        }
+        
+        // 页面加载完成后自动刷新数据
+        window.addEventListener('load', function() {
+            setTimeout(loadData, 100);
+        });
+    </script>
+</body>
+</html>

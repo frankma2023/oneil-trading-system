@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抛盘日参数回测 · 欧奈尔投资系统</title>
+    
+    <!-- Google字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- 统一设计系统 -->
+    <link rel="stylesheet" href="/static/css/dark_theme.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    
+    <!-- Axios HTTP客户端 -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <style>
+        /* 回测页面特定样式 */
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+        }
+        
+        .param-card {
+            background: var(--surface-card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: var(--transition-fast);
+        }
+        
+        .param-card:hover {
+            box-shadow: var(--shadow-elevated);
+            border-color: var(--border-glow);
+        }
+        
+        .param-title {
+            font-size: var(--text-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .param-description {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-sm);
+            line-height: 1.4;
+        }
+        
+        .param-input {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--surface-glass);
+            border: var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            transition: var(--transition-fast);
+        }
+        
+        .param-input:focus {
+            outline: none;
+            border-color: var(--data-positive);
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.2);
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+        }
+        
+        .result-card {
+            background: var(--surface-card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+        
+        .result-title {
+            font-size: var(--text-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: var(--space-sm);
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-sm);
+            padding: var(--space-xs) 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .result-label {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+        }
+        
+        .result-value {
+            font-family: var(--font-mono);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+        
+        .distribution-days-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: var(--space-lg);
+        }
+        
+        .distribution-days-table th {
+            background: var(--surface-glass);
+            padding: var(--space-sm) var(--space-md);
+            text-align: left;
+            font-size: var(--text-xs);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-tertiary);
+            border-bottom: 2px solid var(--border-light);
+        }
+        
+        .distribution-days-table td {
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: var(--text-sm);
+        }
+        
+        .distribution-days-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .type-standard {
+            color: var(--data-up);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .type-special {
+            color: var(--data-warning);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .type-reversal {
+            color: var(--signal-highlight);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .weight-2 {
+            color: var(--signal-danger);
+            font-weight: var(--font-weight-bold);
+        }
+        
+        .controls {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            padding: var(--space-sm) var(--space-xl);
+            background: linear-gradient(135deg, var(--surface-glass), rgba(96, 165, 250, 0.1));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            color: var(--data-positive);
+            font-weight: var(--font-weight-semibold);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .control-btn:hover {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(167, 139, 250, 0.1));
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-btn.primary {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(167, 139, 250, 0.2));
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid transparent;
+            border-top-color: var(--data-positive);
+            border-right-color: var(--data-positive);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-full);
+            font-size: var(--text-sm);
+            font-weight: var(--font-weight-semibold);
+            margin-left: var(--space-sm);
+        }
+        
+        .status-normal {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15));
+            backdrop-filter: var(--glass-blur);
+            color: var(--signal-safe);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        
+        .status-pressure {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.15));
+            backdrop-filter: var(--glass-blur);
+            color: var(--signal-warning);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+        
+        .status-bear {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15));
+            backdrop-filter: var(--glass-blur);
+            color: var(--signal-danger);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="unified-nav">
+        <!-- 导航栏将由JavaScript注入 -->
+    </nav>
+    
+    <!-- 加载动画 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div class="app-container">
+        <!-- 主内容 -->
+        <main class="app-main container">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h1 class="page-title">抛盘日参数回测实验室</h1>
+                <div class="page-subtitle">
+                    调整抛盘日检测参数，验证算法准确性，优化市场状态判断
+                </div>
+            </div>
+            
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button id="runBacktestBtn" class="control-btn primary">运行回测</button>
+                <button id="resetParamsBtn" class="control-btn">重置参数</button>
+                <button id="saveParamsBtn" class="control-btn">保存配置</button>
+                <button id="loadDefaultBtn" class="control-btn">加载默认</button>
+                
+                <div style="margin-left: auto; display: flex; gap: var(--space-md); align-items: center;">
+                    <select id="indexSelect" class="param-input" style="width: 150px;">
+                        <option value="000985">中证全指 (000985)</option>
+                        <option value="000300">沪深300 (000300)</option>
+                    </select>
+                    <input type="number" id="daysInput" class="param-input" placeholder="分析天数" value="25" min="10" max="100" style="width: 100px;">
+                </div>
+            </div>
+            
+            <!-- 参数设置 -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span>⚙️</span>
+                    抛盘日参数配置
+                </h2>
+                
+                <div class="params-grid">
+                    <!-- 平盘日参数 -->
+                    <div class="param-card">
+                        <div class="param-title">平盘日阈值</div>
+                        <div class="param-description">
+                            涨跌幅绝对值小于此值不计为抛盘日（默认: 0.05%）
+                        </div>
+                        <input type="number" id="flatDayThreshold" class="param-input" step="0.0001" value="0.0005">
+                    </div>
+                    
+                    <!-- 标准抛盘日参数 -->
+                    <div class="param-card">
+                        <div class="param-title">标准抛盘日跌幅阈值</div>
+                        <div class="param-description">
+                            跌幅≤此值且放量计为标准抛盘日（默认: -0.1%）
+                        </div>
+                        <input type="number" id="standardThreshold" class="param-input" step="0.0001" value="-0.001">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">标准抛盘日成交量比率</div>
+                        <div class="param-description">
+                            成交量＞前一日×此值（默认: 1.05，即需要放量5%）
+                        </div>
+                        <input type="number" id="standardVolumeRatio" class="param-input" step="0.1" value="1.05">
+                    </div>
+                    
+                    <!-- 特殊抛盘日参数 -->
+                    <div class="param-card">
+                        <div class="param-title">特殊抛盘日最大涨幅</div>
+                        <div class="param-description">
+                            收涨但涨幅＜此值才考虑特殊抛盘日（默认: 0.2%）
+                        </div>
+                        <input type="number" id="specialMaxGain" class="param-input" step="0.0001" value="0.002">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">特殊抛盘日盘中最低涨幅</div>
+                        <div class="param-description">
+                            盘中最高涨幅≥此值才考虑特殊抛盘日（默认: 0.5%）
+                        </div>
+                        <input type="number" id="specialIntradayMin" class="param-input" step="0.0001" value="0.005">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">特殊抛盘日成交量比率</div>
+                        <div class="param-description">
+                            成交量＞前一日×此值（默认: 1.3倍）
+                        </div>
+                        <input type="number" id="specialVolumeRatio" class="param-input" step="0.1" value="1.3">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">特殊抛盘日上影线比率</div>
+                        <div class="param-description">
+                            上影线≥实体×此值（默认: 1.5倍）
+                        </div>
+                        <input type="number" id="specialUpperShadowRatio" class="param-input" step="0.1" value="1.5">
+                    </div>
+                    
+                    <!-- 盘中反转抛盘日参数 -->
+                    <div class="param-card">
+                        <div class="param-title">盘中反转成交量比率</div>
+                        <div class="param-description">
+                            成交量＞前一日×此值（默认: 1.2倍）
+                        </div>
+                        <input type="number" id="intradayVolumeRatio" class="param-input" step="0.1" value="1.2">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">盘中反转上影线比率</div>
+                        <div class="param-description">
+                            上影线≥实体×此值（默认: 1.5倍）
+                        </div>
+                        <input type="number" id="intradayUpperShadowRatio" class="param-input" step="0.1" value="1.5">
+                    </div>
+                    
+                    <!-- 重抛盘日参数 -->
+                    <div class="param-card">
+                        <div class="param-title">重抛盘日跌幅阈值</div>
+                        <div class="param-description">
+                            跌幅≥此值且放量计为2个抛盘日（默认: -1.5%）
+                        </div>
+                        <input type="number" id="heavyThreshold" class="param-input" step="0.0001" value="-0.015">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">重抛盘日成交量比率</div>
+                        <div class="param-description">
+                            成交量＞前一日×此值（默认: 1.0）
+                        </div>
+                        <input type="number" id="heavyVolumeRatio" class="param-input" step="0.1" value="1.0">
+                    </div>
+                    
+                    <!-- 确认日参数 -->
+                    <div class="param-card">
+                        <div class="param-title">确认日涨幅阈值</div>
+                        <div class="param-description">
+                            涨幅≥此值且放量可抵消1个抛盘日（默认: 1.5%）
+                        </div>
+                        <input type="number" id="confirmationGain" class="param-input" step="0.0001" value="0.015">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">确认日成交量比率</div>
+                        <div class="param-description">
+                            成交量≥前一日×此值（默认: 1.0）
+                        </div>
+                        <input type="number" id="confirmationVolumeRatio" class="param-input" step="0.1" value="1.0">
+                    </div>
+                    
+                    <!-- 市场状态阈值 -->
+                    <div class="param-card">
+                        <div class="param-title">承压状态阈值</div>
+                        <div class="param-description">
+                            抛盘日≥此值市场进入承压状态（默认: 5个）
+                        </div>
+                        <input type="number" id="pressureThreshold" class="param-input" step="1" value="5">
+                    </div>
+                    
+                    <div class="param-card">
+                        <div class="param-title">熊市状态阈值</div>
+                        <div class="param-description">
+                            抛盘日≥此值市场进入熊市状态（默认: 8个）
+                        </div>
+                        <input type="number" id="bearThreshold" class="param-input" step="1" value="8">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 回测结果 -->
+            <div class="section" id="resultsSection" style="display: none;">
+                <h2 class="section-title">
+                    <span>📊</span>
+                    回测结果
+                </h2>
+                
+                <!-- 总体统计 -->
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="result-title">
+                            抛盘日统计
+                            <span id="marketStatusBadge" class="status-badge status-normal">正常状态</span>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">分析期间</div>
+                            <div class="result-value" id="analysisPeriod">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">总交易日数</div>
+                            <div class="result-value" id="totalDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">平盘日数</div>
+                            <div class="result-value" id="flatDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">确认日数</div>
+                            <div class="result-value" id="confirmationDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">已使用确认日数</div>
+                            <div class="result-value" id="confirmationDaysUsed">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">剩余确认日数</div>
+                            <div class="result-value" id="confirmationDaysRemaining">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">抵消权重总数</div>
+                            <div class="result-value" id="offsetWeightTotal">--</div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-title">抛盘日类型分布</div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">标准抛盘日</div>
+                            <div class="result-value" id="standardDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">特殊抛盘日(假阳线)</div>
+                            <div class="result-value" id="specialDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">盘中反转抛盘日</div>
+                            <div class="result-value" id="reversalDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">重抛盘日(计为2个)</div>
+                            <div class="result-value" id="heavyDays">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">原始抛盘日总数</div>
+                            <div class="result-value" id="rawTotal">--</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">加权抛盘日总数</div>
+                            <div class="result-value" id="weightedTotal">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 详细抛盘日列表 -->
+                <div class="section" style="margin-top: var(--space-2xl);">
+                    <h3 class="section-title">
+                        <span>📋</span>
+                        详细抛盘日列表
+                    </h3>
+                    
+                    <div id="distributionTableContainer">
+                        <table class="distribution-days-table" id="distributionTable">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>类型</th>
+                                    <th>权重</th>
+                                    <th>涨跌幅</th>
+                                    <th>成交量比</th>
+                                    <th>上影线/实体</th>
+                                    <th>盘中最高</th>
+                                    <th>是否确认日</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distributionTableBody">
+                                <!-- 数据将由JavaScript填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 建议 -->
+                <div class="section" style="margin-top: var(--space-2xl);">
+                    <h3 class="section-title">
+                        <span>💡</span>
+                        投资建议
+                    </h3>
+                    
+                    <div class="result-card">
+                        <div class="result-title" id="recommendationTitle">市场分析</div>
+                        <div class="result-item">
+                            <div class="result-label">当前市场状态</div>
+                            <div class="result-value" id="marketStatusText">--</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">建议操作</div>
+                            <div class="result-value" id="recommendationAction">--</div>
+                        </div>
+                        <div style="margin-top: var(--space-lg); padding: var(--space-lg); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-md);">
+                            <div style="font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.6;">
+                                <div id="recommendationDetails">基于当前参数设置的分析结果...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 统一导航脚本 -->
+    <script src="/static/js/nav.js"></script>
+    
+    <!-- 回测页面JavaScript -->
+    <script>
+        // 页面状态
+        const state = {
+            params: getDefaultParams(),
+            results: null,
+            isLoading: false
+        };
+        
+        // DOM元素
+        const elements = {
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            resultsSection: document.getElementById('resultsSection'),
+            
+            // 参数输入
+            flatDayThreshold: document.getElementById('flatDayThreshold'),
+            standardThreshold: document.getElementById('standardThreshold'),
+            standardVolumeRatio: document.getElementById('standardVolumeRatio'),
+            specialMaxGain: document.getElementById('specialMaxGain'),
+            specialIntradayMin: document.getElementById('specialIntradayMin'),
+            specialVolumeRatio: document.getElementById('specialVolumeRatio'),
+            specialUpperShadowRatio: document.getElementById('specialUpperShadowRatio'),
+            intradayVolumeRatio: document.getElementById('intradayVolumeRatio'),
+            intradayUpperShadowRatio: document.getElementById('intradayUpperShadowRatio'),
+            heavyThreshold: document.getElementById('heavyThreshold'),
+            heavyVolumeRatio: document.getElementById('heavyVolumeRatio'),
+            confirmationGain: document.getElementById('confirmationGain'),
+            confirmationVolumeRatio: document.getElementById('confirmationVolumeRatio'),
+            pressureThreshold: document.getElementById('pressureThreshold'),
+            bearThreshold: document.getElementById('bearThreshold'),
+            
+            // 分析设置
+            indexSelect: document.getElementById('indexSelect'),
+            daysInput: document.getElementById('daysInput'),
+            
+            // 控制按钮
+            runBacktestBtn: document.getElementById('runBacktestBtn'),
+            resetParamsBtn: document.getElementById('resetParamsBtn'),
+            saveParamsBtn: document.getElementById('saveParamsBtn'),
+            loadDefaultBtn: document.getElementById('loadDefaultBtn'),
+            
+            // 结果展示
+            analysisPeriod: document.getElementById('analysisPeriod'),
+            totalDays: document.getElementById('totalDays'),
+            flatDays: document.getElementById('flatDays'),
+            confirmationDays: document.getElementById('confirmationDays'),
+            confirmationDaysUsed: document.getElementById('confirmationDaysUsed'),
+            confirmationDaysRemaining: document.getElementById('confirmationDaysRemaining'),
+            offsetWeightTotal: document.getElementById('offsetWeightTotal'),
+            
+            standardDays: document.getElementById('standardDays'),
+            specialDays: document.getElementById('specialDays'),
+            reversalDays: document.getElementById('reversalDays'),
+            heavyDays: document.getElementById('heavyDays'),
+            rawTotal: document.getElementById('rawTotal'),
+            weightedTotal: document.getElementById('weightedTotal'),
+            
+            marketStatusBadge: document.getElementById('marketStatusBadge'),
+            marketStatusText: document.getElementById('marketStatusText'),
+            recommendationTitle: document.getElementById('recommendationTitle'),
+            recommendationAction: document.getElementById('recommendationAction'),
+            recommendationDetails: document.getElementById('recommendationDetails'),
+            
+            distributionTableBody: document.getElementById('distributionTableBody')
+        };
+        
+        // 默认参数
+        function getDefaultParams() {
+            return {
+                flat_day_threshold: 0.0005,
+                standard_distribution_threshold: -0.001,
+                standard_volume_ratio: 1.05,
+                special_max_gain: 0.002,
+                special_intraday_min: 0.005,
+                special_volume_ratio: 1.3,
+                special_upper_shadow_ratio: 1.5,
+                intraday_volume_ratio: 1.2,
+                intraday_upper_shadow_ratio: 1.5,
+                heavy_distribution_threshold: -0.015,
+                heavy_volume_ratio: 1.0,
+                confirmation_day_gain: 0.015,
+                confirmation_volume_ratio: 1.0,
+                pressure_threshold: 5,
+                bear_threshold: 8,
+                window_days: 25,
+                index_code: "000985"
+            };
+        }
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            initPage();
+            bindEvents();
+            loadSavedParams();
+        });
+        
+        function initPage() {
+            // 设置默认值
+            updateParamsFromState();
+        }
+        
+        function bindEvents() {
+            // 运行回测按钮
+            elements.runBacktestBtn.addEventListener('click', runBacktest);
+            
+            // 重置参数按钮
+            elements.resetParamsBtn.addEventListener('click', function() {
+                if (confirm('确定要重置所有参数为当前值吗？')) {
+                    updateParamsFromState();
+                }
+            });
+            
+            // 保存参数按钮
+            elements.saveParamsBtn.addEventListener('click', saveParams);
+            
+            // 加载默认参数按钮
+            elements.loadDefaultBtn.addEventListener('click', function() {
+                if (confirm('确定要加载默认参数吗？当前参数将被覆盖。')) {
+                    state.params = getDefaultParams();
+                    updateParamsFromState();
+                }
+            });
+            
+            // 参数变化时更新状态
+            const paramInputs = document.querySelectorAll('.param-input');
+            paramInputs.forEach(input => {
+                input.addEventListener('change', updateStateFromParams);
+            });
+        }
+        
+        function updateStateFromParams() {
+            state.params = {
+                flat_day_threshold: parseFloat(elements.flatDayThreshold.value),
+                standard_distribution_threshold: parseFloat(elements.standardThreshold.value),
+                standard_volume_ratio: parseFloat(elements.standardVolumeRatio.value),
+                special_max_gain: parseFloat(elements.specialMaxGain.value),
+                special_intraday_min: parseFloat(elements.specialIntradayMin.value),
+                special_volume_ratio: parseFloat(elements.specialVolumeRatio.value),
+                special_upper_shadow_ratio: parseFloat(elements.specialUpperShadowRatio.value),
+                intraday_volume_ratio: parseFloat(elements.intradayVolumeRatio.value),
+                intraday_upper_shadow_ratio: parseFloat(elements.intradayUpperShadowRatio.value),
+                heavy_distribution_threshold: parseFloat(elements.heavyThreshold.value),
+                heavy_volume_ratio: parseFloat(elements.heavyVolumeRatio.value),
+                confirmation_day_gain: parseFloat(elements.confirmationGain.value),
+                confirmation_volume_ratio: parseFloat(elements.confirmationVolumeRatio.value),
+                pressure_threshold: parseInt(elements.pressureThreshold.value),
+                bear_threshold: parseInt(elements.bearThreshold.value),
+                window_days: parseInt(elements.daysInput.value),
+                index_code: elements.indexSelect.value
+            };
+        }
+        
+        function updateParamsFromState() {
+            elements.flatDayThreshold.value = state.params.flat_day_threshold;
+            elements.standardThreshold.value = state.params.standard_distribution_threshold;
+            elements.standardVolumeRatio.value = state.params.standard_volume_ratio;
+            elements.specialMaxGain.value = state.params.special_max_gain;
+            elements.specialIntradayMin.value = state.params.special_intraday_min;
+            elements.specialVolumeRatio.value = state.params.special_volume_ratio;
+            elements.specialUpperShadowRatio.value = state.params.special_upper_shadow_ratio;
+            elements.intradayVolumeRatio.value = state.params.intraday_volume_ratio;
+            elements.intradayUpperShadowRatio.value = state.params.intraday_upper_shadow_ratio;
+            elements.heavyThreshold.value = state.params.heavy_distribution_threshold;
+            elements.heavyVolumeRatio.value = state.params.heavy_volume_ratio;
+            elements.confirmationGain.value = state.params.confirmation_day_gain;
+            elements.confirmationVolumeRatio.value = state.params.confirmation_volume_ratio;
+            elements.pressureThreshold.value = state.params.pressure_threshold;
+            elements.bearThreshold.value = state.params.bear_threshold;
+            elements.daysInput.value = state.params.window_days;
+            elements.indexSelect.value = state.params.index_code;
+        }
+        
+        function loadSavedParams() {
+            const saved = localStorage.getItem('distribution_params');
+            if (saved) {
+                try {
+                    state.params = JSON.parse(saved);
+                    updateParamsFromState();
+                    console.log('已加载保存的参数');
+                } catch (e) {
+                    console.warn('加载保存的参数失败:', e);
+                }
+            }
+        }
+        
+        function saveParams() {
+            updateStateFromParams();
+            localStorage.setItem('distribution_params', JSON.stringify(state.params));
+            alert('参数已保存到本地存储');
+        }
+        
+        function showLoading() {
+            elements.loadingOverlay.classList.add('show');
+            state.isLoading = true;
+        }
+        
+        function hideLoading() {
+            elements.loadingOverlay.classList.remove('show');
+            state.isLoading = false;
+        }
+        
+        async function runBacktest() {
+            if (state.isLoading) return;
+            
+            showLoading();
+            
+            try {
+                updateStateFromParams();
+                
+                // 构建请求参数
+                const params = new URLSearchParams();
+                Object.keys(state.params).forEach(key => {
+                    params.append(key, state.params[key]);
+                });
+                
+                // 调用API
+                const response = await axios.post(`/api/backtest/distribution?${params.toString()}`);
+                state.results = response.data;
+                
+                // 显示结果
+                displayResults();
+                
+                // 显示结果区域
+                elements.resultsSection.style.display = 'block';
+                
+            } catch (error) {
+                console.error('回测失败:', error);
+                alert(`回测失败: ${error.message || '未知错误'}`);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function displayResults() {
+            if (!state.results) return;
+            
+            const results = state.results;
+            const metadata = results.metadata || {};
+            const statistics = results.statistics || {};
+            
+            // 基本信息
+            elements.analysisPeriod.textContent = `${metadata.start_date} 至 ${metadata.end_date}`;
+            elements.totalDays.textContent = metadata.total_days || 0;
+            elements.flatDays.textContent = statistics.flat_days || 0;
+            elements.confirmationDays.textContent = statistics.confirmation_days || 0;
+            elements.confirmationDaysUsed.textContent = statistics.confirmation_days_used || 0;
+            elements.confirmationDaysRemaining.textContent = statistics.confirmation_days_remaining || 0;
+            elements.offsetWeightTotal.textContent = statistics.offset_weight_total || 0;
+            
+            // 抛盘日统计
+            elements.standardDays.textContent = statistics.standard_days || 0;
+            elements.specialDays.textContent = statistics.special_days || 0;
+            elements.reversalDays.textContent = statistics.intraday_reversal_days || 0;
+            elements.heavyDays.textContent = statistics.heavy_days || 0;
+            elements.rawTotal.textContent = statistics.raw_total || 0;
+            elements.weightedTotal.textContent = statistics.weighted_total || 0;
+            
+            // 市场状态
+            const marketStatus = statistics.market_status || '未知';
+            elements.marketStatusText.textContent = marketStatus;
+            
+            // 更新状态徽章
+            elements.marketStatusBadge.className = 'status-badge';
+            elements.marketStatusBadge.textContent = marketStatus;
+            
+            if (marketStatus === '熊市状态') {
+                elements.marketStatusBadge.classList.add('status-bear');
+                elements.recommendationTitle.textContent = '⚠️ 高风险警告';
+                elements.recommendationAction.textContent = '暂停选股';
+                let recommendationText = `市场处于熊市状态，加权抛盘日总数${statistics.weighted_total}个。建议暂停选股，降低仓位，等待市场企稳。`;
+                if (statistics.offset_weight_total > 0) {
+                    recommendationText += `\n\n📊 抵消信息：确认日抵消了${statistics.confirmation_days_used || 0}个抛盘日，共减少${statistics.offset_weight_total}点权重。`;
+                }
+                elements.recommendationDetails.textContent = recommendationText;
+            } else if (marketStatus === '承压状态') {
+                elements.marketStatusBadge.classList.add('status-pressure');
+                elements.recommendationTitle.textContent = '⚠️ 市场承压';
+                elements.recommendationAction.textContent = '谨慎选股';
+                let recommendationText = `市场处于承压状态，加权抛盘日总数${statistics.weighted_total}个。建议谨慎选股，控制仓位，密切关注市场变化。`;
+                if (statistics.offset_weight_total > 0) {
+                    recommendationText += `\n\n📊 抵消信息：确认日抵消了${statistics.confirmation_days_used || 0}个抛盘日，共减少${statistics.offset_weight_total}点权重。`;
+                }
+                elements.recommendationDetails.textContent = recommendationText;
+            } else {
+                elements.marketStatusBadge.classList.add('status-normal');
+                elements.recommendationTitle.textContent = '✅ 市场正常';
+                elements.recommendationAction.textContent = '正常选股';
+                let recommendationText = `市场处于正常状态，加权抛盘日总数${statistics.weighted_total}个。可以正常选股，但仍需关注市场变化。`;
+                if (statistics.offset_weight_total > 0) {
+                    recommendationText += `\n\n📊 抵消信息：确认日抵消了${statistics.confirmation_days_used || 0}个抛盘日，共减少${statistics.offset_weight_total}点权重。`;
+                }
+                elements.recommendationDetails.textContent = recommendationText;
+            }
+            
+            // 显示详细抛盘日列表
+            displayDistributionDays(results.distribution_days || []);
+        }
+        
+        function displayDistributionDays(days) {
+            const tbody = elements.distributionTableBody;
+            tbody.innerHTML = '';
+            
+            if (days.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="8" style="text-align: center; color: var(--text-tertiary);">无抛盘日</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            days.forEach(day => {
+                const row = document.createElement('tr');
+                
+                // 类型颜色
+                let typeClass = '';
+                let typeText = '';
+                if (day.type === 'standard') {
+                    typeClass = 'type-standard';
+                    typeText = '标准抛盘日';
+                } else if (day.type === 'special') {
+                    typeClass = 'type-special';
+                    typeText = '特殊抛盘日';
+                } else if (day.type === 'intraday_reversal') {
+                    typeClass = 'type-reversal';
+                    typeText = '盘中反转';
+                }
+                
+                // 权重样式
+                const weightClass = day.weight === 2 ? 'weight-2' : '';
+                
+                row.innerHTML = `
+                    <td>${day.date}</td>
+                    <td><span class="${typeClass}">${typeText}</span></td>
+                    <td><span class="${weightClass}">${day.weight}</span></td>
+                    <td>${(day.change_pct * 100).toFixed(2)}%</td>
+                    <td>${day.volume_ratio.toFixed(2)}</td>
+                    <td>${day.upper_shadow_ratio ? day.upper_shadow_ratio.toFixed(2) : '--'}</td>
+                    <td>${day.intraday_high_pct ? (day.intraday_high_pct * 100).toFixed(2) + '%' : '--'}</td>
+                    <td>${day.is_confirmation ? '是' : '否'}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 页面加载完成后自动加载参数
+        window.addEventListener('load', function() {
+            setTimeout(loadSavedParams, 100);
+        });
+    </script>
+</body>
+</html>

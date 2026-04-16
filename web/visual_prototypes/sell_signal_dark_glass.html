@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>持仓哨兵 · 暗夜热力图</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- 使用工业风格的字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <style>
+        /* ====== 暗夜数据美学：深色毛玻璃持仓哨兵 ====== */
+        :root {
+            /* 核心色彩系统：深色主题 */
+            --surface-primary: #0f172a;
+            --surface-secondary: #1e293b;
+            --surface-tertiary: #334155;
+            --surface-elevated: rgba(30, 41, 59, 0.7);
+            --surface-glass: rgba(30, 41, 59, 0.4);
+            
+            /* 边界系统：深色边界 */
+            --border-light: rgba(71, 85, 105, 0.3);
+            --border-medium: rgba(71, 85, 105, 0.5);
+            --border-strong: rgba(71, 85, 105, 0.7);
+            --border-glow: rgba(59, 130, 246, 0.3);
+            
+            /* 数据语义色彩 */
+            --data-critical: #f87171;     /* 严重负面：亮红 */
+            --data-warning: #fb923c;      /* 警告：亮橙 */
+            --data-neutral: #94a3b8;      /* 中性：浅石板色 */
+            --data-positive: #4ade80;     /* 正面：亮绿 */
+            --data-strong: #60a5fa;       /* 强正面：亮蓝 */
+            --data-excellent: #22d3ee;    /* 优异：亮青色 */
+            
+            /* 信号颜色 */
+            --signal-red: #f87171;        /* 红色信号 */
+            --signal-amber: #fbbf24;      /* 黄色信号 */
+            --signal-green: #4ade80;      /* 绿色信号 */
+            --signal-blue: #60a5fa;       /* 蓝色信号 */
+            --signal-purple: #a78bfa;     /* 紫色信号 */
+            
+            /* 热力图梯度 */
+            --heat-gradient-0: #dc2626;
+            --heat-gradient-1: #ef4444;
+            --heat-gradient-2: #f87171;
+            --heat-gradient-3: #fca5a5;
+            --heat-gradient-4: #fecaca;
+            --heat-gradient-5: rgba(71, 85, 105, 0.5);
+            --heat-gradient-6: #86efac;
+            --heat-gradient-7: #4ade80;
+            --heat-gradient-8: #22c55e;
+            --heat-gradient-9: #16a34a;
+            
+            /* 字体系统 */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            
+            /* 空间系统 */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 12px;
+            --radius-full: 9999px;
+            
+            /* 阴影系统 */
+            --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.5);
+            --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.7);
+            --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+            
+            /* 毛玻璃效果 */
+            --glass-blur: blur(12px);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            
+            /* 动画系统 */
+            --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* 侧边栏宽度 */
+            --sidebar-width: 280px;
+        }
+        
+        /* ====== BASE ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            font-size: 13px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            line-height: 1.5;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 添加微妙的网格背景 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* ====== 应用布局 ====== */
+        .app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* ====== 侧边栏 ====== */
+        .sidebar {
+            width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border-right: var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sb-header {
+            padding: 16px 20px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sb-header h1 {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            letter-spacing: -0.01em;
+        }
+        
+        .badge {
+            font-size: 0.7rem;
+            background: var(--signal-red);
+            color: white;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .sb-actions {
+            padding: 12px 16px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            gap: 8px;
+        }
+        
+        .sb-btn {
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            flex: 1;
+            text-align: center;
+        }
+        
+        .sb-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-glow);
+            transform: translateY(-1px);
+        }
+        
+        .sb-btn.primary {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: #0f172a;
+            border: none;
+            font-weight: 700;
+        }
+        
+        .sb-btn.primary:hover {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        /* 回测控制 */
+        .backtest-controls {
+            padding: 12px 16px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .backtest-label {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        .backtest-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 6px 10px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            width: 100%;
+        }
+        
+        /* 持仓列表 */
+        .holding-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        
+        .h-group {
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .h-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .h-group-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .h-group-header.active {
+            background: rgba(96, 165, 250, 0.15);
+            border-left: 3px solid #60a5fa;
+        }
+        
+        .h-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .h-avatar.up { background: rgba(74, 222, 128, 0.2); color: var(--signal-green); }
+        .h-avatar.dn { background: rgba(248, 113, 113, 0.2); color: var(--signal-red); }
+        .h-avatar.flat { background: rgba(148, 163, 184, 0.2); color: var(--data-neutral); }
+        
+        .h-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .h-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #f1f5f9;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .h-code {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-family: var(--font-mono);
+        }
+        
+        .h-signal {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        
+        .h-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .h-dot.red { background: var(--signal-red); box-shadow: 0 0 8px var(--signal-red); }
+        .h-dot.amber { background: var(--signal-amber); box-shadow: 0 0 8px var(--signal-amber); }
+        .h-dot.green { background: var(--signal-green); box-shadow: 0 0 8px var(--signal-green); }
+        
+        .h-pnl {
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+        
+        .h-pnl.up { color: var(--signal-red); }
+        .h-pnl.dn { color: var(--signal-green); }
+        
+        /* ====== 主内容区域 ====== */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* 市场环境条 */
+        .market-bar {
+            display: flex;
+            gap: 16px;
+            padding: 12px 20px;
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border-bottom: var(--glass-border);
+            align-items: center;
+            font-size: 0.8rem;
+        }
+        
+        .market-bar-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 8px;
+        }
+        
+        .market-index-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.05);
+            min-width: 160px;
+            transition: var(--transition-fast);
+        }
+        
+        .market-index-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-subtle);
+        }
+        
+        .market-index-card.safe { border-color: rgba(74, 222, 128, 0.3); background: rgba(74, 222, 128, 0.1); }
+        .market-index-card.warn { border-color: rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.1); }
+        .market-index-card.danger { border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.1); }
+        
+        .market-idx-name {
+            font-weight: 600;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            color: #f1f5f9;
+        }
+        
+        .market-dist-count {
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            min-width: 32px;
+            text-align: center;
+        }
+        
+        .market-dist-count.safe { color: var(--signal-green); }
+        .market-dist-count.warn { color: var(--signal-amber); }
+        .market-dist-count.danger { color: var(--signal-red); }
+        
+        .market-dist-label {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        
+        .market-dist-detail {
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            margin-left: auto;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: #94a3b8;
+            font-size: 1rem;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            opacity: 0.3;
+        }
+        
+        /* 股票详情区域 */
+        .stock-detail {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        /* 顶部栏 */
+        .top-bar {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stock-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .stock-name {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .stock-code {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        
+        .stock-industry {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            background: rgba(148, 163, 184, 0.1);
+            padding: 3px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .stock-signals {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .signal-tag {
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .signal-tag.red { background: rgba(248, 113, 113, 0.2); color: var(--signal-red); border: 1px solid rgba(248, 113, 113, 0.3); }
+        .signal-tag.amber { background: rgba(251, 191, 36, 0.2); color: var(--signal-amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+        .signal-tag.green { background: rgba(74, 222, 128, 0.2); color: var(--signal-green); border: 1px solid rgba(74, 222, 128, 0.3); }
+        
+        /* KPI 行 */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .kpi-card {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: var(--transition-base);
+        }
+        
+        .kpi-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .kpi-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        .kpi-value {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            line-height: 1;
+        }
+        
+        .kpi-change {
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .change-up { color: var(--signal-red); }
+        .change-down { color: var(--signal-green); }
+        
+        /* 图表区域 */
+        .chart-box {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            height: 300px;
+        }
+        
+        .chart-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 16px;
+        }
+        
+        #priceChart {
+            width: 100%;
+            height: 250px;
+        }
+        
+        /* 底部面板 */
+        .bottom-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        
+        .panel-card {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: var(--transition-base);
+        }
+        
+        .panel-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .panel-card.safe { border-left: 3px solid var(--signal-green); }
+        .panel-card.warn { border-left: 3px solid var(--signal-amber); }
+        .panel-card.danger { border-left: 3px solid var(--signal-red); }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .panel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .panel-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            text-transform: uppercase;
+        }
+        
+        .panel-badge.safe { background: rgba(74, 222, 128, 0.2); color: var(--signal-green); }
+        .panel-badge.warn { background: rgba(251, 191, 36, 0.2); color: var(--signal-amber); }
+        .panel-badge.danger { background: rgba(248, 113, 113, 0.2); color: var(--signal-red); }
+        
+        /* 抛盘日卡片 */
+        .dist-idx-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .dist-idx {
+            flex: 1;
+            padding: 8px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+        
+        .dist-idx-name {
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
+        
+        .dist-idx-count {
+            font-size: 1.3rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            line-height: 1;
+        }
+        
+        .dist-idx-count.safe { color: var(--signal-green); }
+        .dist-idx-count.warn { color: var(--signal-amber); }
+        .dist-idx-count.danger { color: var(--signal-red); }
+        
+        .dist-idx-label {
+            font-size: 0.65rem;
+            color: #94a3b8;
+        }
+        
+        /* 抛盘日类型跟踪 */
+        .dist-type-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 4px 0;
+        }
+        
+        .dist-type-label {
+            width: 50px;
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            text-align: right;
+        }
+        
+        .dist-type-track {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .dist-type-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+        
+        .dist-type-fill.std { background: var(--signal-red); }
+        .dist-type-fill.fy { background: var(--signal-amber); }
+        .dist-type-fill.ir { background: var(--signal-purple); }
+        
+        .dist-type-val {
+            width: 24px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-align: right;
+            font-family: var(--font-mono);
+        }
+        
+        /* 抛盘日列表 */
+        .dist-day-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        
+        .dist-day-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-light);
+        }
+        
+        .dist-day-date {
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+        
+        .dist-day-drop {
+            color: var(--signal-red);
+            font-weight: 600;
+        }
+        
+        .dist-day-vol {
+            color: #94a3b8;
+        }
+        
+        .dist-day-type-tag {
+            font-size: 0.65rem;
+            padding: 1px 4px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+        }
+        
+        .dist-type-tag.std { background: rgba(248, 113, 113, 0.2); color: var(--signal-red); }
+        .dist-type-tag.fy { background: rgba(251, 191, 36, 0.2); color: var(--signal-amber); }
+        .dist-type-tag.ir { background: rgba(167, 139, 250, 0.2); color: var(--signal-purple); }
+        
+        /* 建议文本 */
+        .dist-advice {
+            margin-top: 12px;
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        
+        .dist-advice.safe { background: rgba(74, 222, 128, 0.1); color: var(--signal-green); border: 1px solid rgba(74, 222, 128, 0.2); }
+        .dist-advice.warn { background: rgba(251, 191, 36, 0.1); color: var(--signal-amber); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .dist-advice.danger { background: rgba(248, 113, 113, 0.1); color: var(--signal-red); border: 1px solid rgba(248, 113, 113, 0.2); }
+        
+        /* 模态框 */
+        .modal-bg {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-base);
+        }
+        
+        .modal-bg.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .modal {
+            background: var(--surface-secondary);
+            border: var(--glass-border);
+            backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-xl);
+            width: 480px;
+            max-width: 92vw;
+            padding: 24px;
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 20px;
+        }
+        
+        /* ====== 响应式设计 ====== */
+        @media (max-width: 1400px) {
+            .bottom-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .bottom-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .app-body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+                height: 300px;
+            }
+            
+            .market-bar {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .market-index-card {
+                min-width: 140px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .kpi-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .stock-detail {
+                padding: 12px;
+            }
+            
+            .top-bar {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            
+            .stock-signals {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+        
+        /* ====== 动画 ====== */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .live-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn var(--transition-base) ease-out;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(96, 165, 250, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(96, 165, 250, 0.6); }
+        }
+        
+        .glow-animation {
+            animation: glow 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-body">
+        <!-- 侧边栏 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sb-header">
+                <h1>持仓哨兵 · 暗夜模式</h1>
+                <span class="badge" id="alertBadge">3</span>
+            </div>
+            
+            <div class="sb-actions">
+                <button class="sb-btn primary" onclick="showAddModal()">+ 添加持仓</button>
+                <button class="sb-btn" onclick="runScan()">扫描信号</button>
+            </div>
+            
+            <div class="backtest-controls">
+                <div class="backtest-label">回测日期</div>
+                <input type="date" id="backtestDate" class="backtest-input" value="2026-04-12">
+                <button class="sb-btn" id="backtestBtn" onclick="runBacktest()">回测选中股</button>
+            </div>
+            
+            <div class="holding-list" id="holdingList">
+                <!-- 持仓组 1 -->
+                <div class="h-group">
+                    <div class="h-group-header active">
+                        <div class="h-avatar up">📈</div>
+                        <div class="h-info">
+                            <div class="h-name">宁德时代</div>
+                            <div class="h-code">300750</div>
+                        </div>
+                        <div class="h-signal">
+                            <div class="h-dot red"></div>
+                            <div class="h-dot amber"></div>
+                        </div>
+                        <div class="h-pnl up">+18.5%</div>
+                    </div>
+                </div>
+                
+                <!-- 持仓组 2 -->
+                <div class="h-group">
+                    <div class="h-group-header">
+                        <div class="h-avatar dn">📉</div>
+                        <div class="h-info">
+                            <div class="h-name">招商银行</div>
+                            <div class="h-code">600036</div>
+                        </div>
+                        <div class="h-signal">
+                            <div class="h-dot amber"></div>
+                        </div>
+                        <div class="h-pnl dn">-3.2%</div>
+                    </div>
+                </div>
+                
+                <!-- 持仓组 3 -->
+                <div class="h-group">
+                    <div class="h-group-header">
+                        <div class="h-avatar flat">➡️</div>
+                        <div class="h-info">
+                            <div class="h-name">贵州茅台</div>
+                            <div class="h-code">600519</div>
+                        </div>
+                        <div class="h-signal">
+                            <div class="h-dot green"></div>
+                        </div>
+                        <div class="h-pnl up">+2.1%</div>
+                    </div>
+                </div>
+                
+                <!-- 持仓组 4 -->
+                <div class="h-group">
+                    <div class="h-group-header">
+                        <div class="h-avatar up">📈</div>
+                        <div class="h-info">
+                            <div class="h-name">兆易创新</div>
+                            <div class="h-code">603986</div>
+                        </div>
+                        <div class="h-signal">
+                            <div class="h-dot red"></div>
+                        </div>
+                        <div class="h-pnl up">+24.8%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 -->
+        <div class="content" id="contentArea">
+            <!-- 市场环境条 -->
+            <div class="market-bar" id="marketBar">
+                <span class="market-bar-label">市场环境</span>
+                
+                <div class="market-index-card warn">
+                    <span class="market-idx-name">上证指数</span>
+                    <span class="market-dist-count warn">7/25</span>
+                    <span class="market-dist-label">警戒</span>
+                    <span class="market-dist-detail">标准:4 假阳:2 反转:1</span>
+                </div>
+                
+                <div class="market-index-card danger">
+                    <span class="market-idx-name">深证成指</span>
+                    <span class="market-dist-count danger">8/25</span>
+                    <span class="market-dist-label">危险</span>
+                    <span class="market-dist-detail">标准:5 假阳:2 反转:1</span>
+                </div>
+                
+                <div class="market-index-card safe">
+                    <span class="market-idx-name">创业板指</span>
+                    <span class="market-dist-count safe">3/25</span>
+                    <span class="market-dist-label">安全</span>
+                    <span class="market-dist-detail">标准:2 假阳:1</span>
+                </div>
+                
+                <span style="font-size:0.7rem;font-weight:700;color:#f87171;padding:2px 8px;border-radius:var(--radius-full);background:rgba(248,113,113,0.1)">
+                    双重确认
+                </span>
+            </div>
+            
+            <!-- 股票详情区域 -->
+            <div class="stock-detail" id="stockDetail">
+                <!-- 顶部栏 -->
+                <div class="top-bar slide-in">
+                    <div class="stock-header">
+                        <div>
+                            <div class="stock-name">宁德时代</div>
+                            <div class="stock-code">300750 · 新能源</div>
+                        </div>
+                        <div class="stock-industry">新能源电池</div>
+                    </div>
+                    
+                    <div class="stock-signals">
+                        <div class="signal-tag red">卖出信号</div>
+                        <div class="signal-tag amber">破位风险</div>
+                        <div class="signal-tag green">RS强势</div>
+                    </div>
+                </div>
+                
+                <!-- KPI 行 -->
+                <div class="kpi-row slide-in">
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-label">当前价格</span>
+                            <span class="kpi-change change-up">+1.85%</span>
+                        </div>
+                        <div class="kpi-value">245.80</div>
+                        <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">买入: 207.50 · 仓位: 12%</div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-label">浮盈</span>
+                            <span class="kpi-change change-up">+18.5%</span>
+                        </div>
+                        <div class="kpi-value" style="color:#4ade80;">+38,250</div>
+                        <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">收益率 · 持有42天</div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-label">RS强度</span>
+                            <span class="kpi-change change-up">92</span>
+                        </div>
+                        <div class="kpi-value" style="color:#f87171;">强势</div>
+                        <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">250日:95 · 行业:88</div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-label">风险评分</span>
+                            <span class="kpi-change change-up">高</span>
+                        </div>
+                        <div class="kpi-value" style="color:#f87171;">72</div>
+                        <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">需关注抛盘日增加</div>
+                    </div>
+                </div>
+                
+                <!-- 图表区域 -->
+                <div class="chart-box slide-in">
+                    <div class="chart-title">价格走势与信号分析</div>
+                    <div id="priceChart"></div>
+                </div>
+                
+                <!-- 底部面板 -->
+                <div class="bottom-panel slide-in">
+                    <!-- 抛盘日卡片 -->
+                    <div class="panel-card danger">
+                        <div class="panel-header">
+                            <div class="panel-title">📊 大盘抛盘日</div>
+                            <div class="panel-badge danger">危险</div>
+                        </div>
+                        
+                        <div class="dist-idx-row">
+                            <div class="dist-idx">
+                                <div class="dist-idx-name">上证</div>
+                                <div class="dist-idx-count danger">7/25</div>
+                                <div class="dist-idx-label">警戒</div>
+                            </div>
+                            <div class="dist-idx">
+                                <div class="dist-idx-name">深证</div>
+                                <div class="dist-idx-count danger">8/25</div>
+                                <div class="dist-idx-label">危险</div>
+                            </div>
+                            <div class="dist-idx">
+                                <div class="dist-idx-name">创业</div>
+                                <div class="dist-idx-count safe">3/25</div>
+                                <div class="dist-idx-label">安全</div>
+                            </div>
+                        </div>
+                        
+                        <div class="dist-type-row">
+                            <div class="dist-type-label">标准</div>
+                            <div class="dist-type-track">
+                                <div class="dist-type-fill std" style="width: 60%;"></div>
+                            </div>
+                            <div class="dist-type-val">5</div>
+                        </div>
+                        
+                        <div class="dist-type-row">
+                            <div class="dist-type-label">假阳</div>
+                            <div class="dist-type-track">
+                                <div class="dist-type-fill fy" style="width: 40%;"></div>
+                            </div>
+                            <div class="dist-type-val">2</div>
+                        </div>
+                        
+                        <div class="dist-type-row">
+                            <div class="dist-type-label">反转</div>
+                            <div class="dist-type-track">
+                                <div class="dist-type-fill ir" style="width: 20%;"></div>
+                            </div>
+                            <div class="dist-type-val">1</div>
+                        </div>
+                        
+                        <div class="dist-day-list">
+                            <div class="dist-day-item">
+                                <span class="dist-day-date">04-10</span>
+                                <span class="dist-day-drop">-1.8%</span>
+                                <span class="dist-day-type-tag std">标准</span>
+                            </div>
+                            <div class="dist-day-item">
+                                <span class="dist-day-date">04-08</span>
+                                <span class="dist-day-drop">-2.1%</span>
+                                <span class="dist-day-type-tag fy">假阳</span>
+                            </div>
+                            <div class="dist-day-item">
+                                <span class="dist-day-date">04-05</span>
+                                <span class="dist-day-drop">-1.5%</span>
+                                <span class="dist-day-type-tag std">标准</span>
+                            </div>
+                        </div>
+                        
+                        <div class="dist-advice danger">
+                            ⚠️ 大盘抛盘日达到危险水平，建议减仓或设置严格止损
+                        </div>
+                    </div>
+                    
+                    <!-- 铁路轨道卡片 -->
+                    <div class="panel-card warn">
+                        <div class="panel-header">
+                            <div class="panel-title">🛤️ 铁路轨道信号</div>
+                            <div class="panel-badge warn">中等确认</div>
+                        </div>
+                        
+                        <div style="color:#cbd5e1;line-height:1.5;font-size:0.85rem;">
+                            连续3周高点下移，成交量萎缩，显示上升动能减弱
+                        </div>
+                        
+                        <div class="dist-advice warn" style="margin-top:12px;">
+                            🔍 关注能否在当前位置企稳，跌破前低需止损
+                        </div>
+                    </div>
+                    
+                    <!-- 顶部形态卡片 -->
+                    <div class="panel-card danger">
+                        <div class="panel-header">
+                            <div class="panel-title">⛰️ 双重顶形态</div>
+                            <div class="panel-badge danger">高确认</div>
+                        </div>
+                        
+                        <div style="color:#cbd5e1;line-height:1.5;font-size:0.85rem;">
+                            在248.50形成明显双重顶，颈线位置240.20已被跌破
+                        </div>
+                        
+                        <div class="dist-advice danger" style="margin-top:12px;">
+                            🚨 形态确认，目标价位225.80，建议立即减仓或离场
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 空状态 -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">📊</div>
+                <div>选择左侧持仓股票查看详细信号分析</div>
+                <div style="font-size:0.8rem;color:#64748b;">持仓哨兵监控卖出信号与风险指标</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加模态框 -->
+    <div class="modal-bg" id="addModalBg">
+        <div class="modal">
+            <div class="modal-title">添加持仓批次</div>
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;">股票名称 / 代码</div>
+                <input type="text" id="stockInput" placeholder="贵州茅台 或 600519" style="background:rgba(255,255,255,0.05);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;font-size:0.85rem;color:#f1f5f9;width:100%;outline:none;transition:var(--transition-fast);">
+                <div style="font-size:0.7rem;color:#64748b;margin-top:4px;">输入股票名称或代码自动匹配</div>
+            </div>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                <div>
+                    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;">买入价格</div>
+                    <input type="number" step="0.01" placeholder="0.00" style="background:rgba(255,255,255,0.05);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;font-size:0.85rem;color:#f1f5f9;width:100%;outline:none;">
+                </div>
+                <div>
+                    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;">买入数量</div>
+                    <input type="number" placeholder="0" style="background:rgba(255,255,255,0.05);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;font-size:0.85rem;color:#f1f5f9;width:100%;outline:none;">
+                </div>
+            </div>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+                <div>
+                    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;">买入日期</div>
+                    <input type="date" style="background:rgba(255,255,255,0.05);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;font-size:0.85rem;color:#f1f5f9;width:100%;outline:none;">
+                </div>
+                <div>
+                    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;">备注</div>
+                    <input type="text" placeholder="选填" style="background:rgba(255,255,255,0.05);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;font-size:0.85rem;color:#f1f5f9;width:100%;outline:none;">
+                </div>
+            </div>
+            
+            <div style="display:flex;justify-content:flex-end;gap:10px;">
+                <button class="sb-btn" onclick="hideAddModal()">取消</button>
+                <button class="sb-btn primary" onclick="addHolding()">确认添加</button>
+            </div>
+        </div>

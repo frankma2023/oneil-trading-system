@@ -1,0 +1,81 @@
+# 欧奈尔投资系统配置
+
+# 数据库配置
+database:
+  path: "data/database/lixinger.db"
+  echo: false
+  pool_size: 10
+
+# 市场扫描配置
+market:
+  # 默认分析指数
+  default_index: "000985"  # 中证全指
+  
+  # 抛盘日参数
+  distribution:
+    standard_change_threshold: -0.002  # 跌幅≥0.2%
+    standard_volume_ratio: 1.0
+    fake_yang_change_max: 0.001  # 微涨≤0.1%
+    fake_yang_volume_ratio: 1.5
+    intraday_reversal_change_max: 0.002  # 涨跌幅≤0.2%
+    intraday_reversal_volume_ratio: 1.2
+    close_position_threshold: 0.5
+    upper_shadow_threshold: 2.0
+  
+  # 吸筹日参数
+  accumulation:
+    change_threshold: 0.002  # 涨幅≥0.2%
+    volume_ratio: 1.0
+    close_position_threshold: 0.5
+  
+  # 追盘日参数
+  follow_through:
+    change_threshold: 0.012  # 涨幅≥1.2%
+    volume_threshold: 1.0
+    days_after_low: 4
+    confirmation_days: 3
+  
+  # 滑动窗口
+  window_days: 25
+
+# 回测配置
+backtest:
+  initial_capital: 100000.0
+  commission_rate: 0.0003  # 万分之三
+  slippage_rate: 0.0001    # 万分之一
+  
+  # 绩效评估指标
+  metrics:
+    - "total_return"
+    - "annual_return"
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "win_rate"
+    - "profit_factor"
+
+# Web服务器配置
+server:
+  host: "127.0.0.1"
+  port: 8000
+  debug: true
+  reload: true
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/app.log"
+  max_size_mb: 10
+  backup_count: 5
+
+# 数据更新配置
+data_update:
+  # 自动更新计划
+  schedule:
+    daily_update: "16:30"  # 收盘后更新
+    weekly_rebuild: "Sunday 03:00"  # 每周重建周线
+    
+  # 缓存配置
+  cache:
+    ttl_days: 7
+    enabled: true

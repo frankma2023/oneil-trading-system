@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轻量交易仪表板 · 欧奈尔市场扫描</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- 现代交易平台字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/umd/lucide.min.js"></script>
+    <style>
+        /* ====== 精致交易美学：LIGHTWEIGHT DASHBOARD ====== */
+        :root {
+            /* 核心表面：极简白 */
+            --surface-primary: #ffffff;
+            --surface-secondary: #fcfcfd;
+            --surface-tertiary: #f8f9fa;
+            --surface-elevated: #ffffff;
+            
+            /* 边界系统：细腻的灰色 */
+            --border-ultralight: #f1f3f5;
+            --border-light: #e9ecef;
+            --border-medium: #dee2e6;
+            --border-strong: #ced4da;
+            
+            /* 功能色彩：交易语义 */
+            --functional-long: #10b981;      /* 做多/积极 */
+            --functional-long-light: rgba(16, 185, 129, 0.1);
+            --functional-short: #ef4444;     /* 做空/消极 */
+            --functional-short-light: rgba(239, 68, 68, 0.1);
+            --functional-neutral: #64748b;   /* 中性 */
+            --functional-neutral-light: rgba(100, 116, 139, 0.1);
+            --functional-accent: #3b82f6;    /* 强调色 */
+            --functional-accent-light: rgba(59, 130, 246, 0.1);
+            
+            /* 数据梯度：微妙但清晰 */
+            --gradient-negative-4: #fee2e2;
+            --gradient-negative-3: #fecaca;
+            --gradient-negative-2: #fca5a5;
+            --gradient-negative-1: #f87171;
+            --gradient-neutral: #f8fafc;
+            --gradient-positive-1: #bbf7d0;
+            --gradient-positive-2: #86efac;
+            --gradient-positive-3: #4ade80;
+            --gradient-positive-4: #22c55e;
+            
+            /* 字体系统：现代易读 */
+            --font-display: 'Instrument Sans', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'Geist Mono', monospace;
+            
+            /* 空间系统：优雅的呼吸感 */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            --radius-full: 9999px;
+            
+            /* 阴影系统：极简深度 */
+            --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-floating: 0 8px 32px rgba(0, 0, 0, 0.12);
+            
+            /* 动画系统：流畅自然 */
+            --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-smooth: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ====== BASE RESET ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            font-size: 14px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: var(--surface-secondary);
+            color: #2d3748;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* 优雅的渐变背景 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 280px;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* ====== TYPOGRAPHY SYSTEM ====== */
+        .text-display {
+            font-family: var(--font-display);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+        
+        .text-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1a202c;
+        }
+        
+        .text-subtitle {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+        
+        .text-label {
+            font-size: 0.8rem;
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .text-value {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: #2d3748;
+        }
+        
+        .text-value-large {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1.8rem;
+            color: #1a202c;
+            line-height: 1;
+        }
+        
+        .text-caption {
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+        
+        /* ====== LAYOUT SYSTEM ====== */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 var(--space-4);
+        }
+        
+        .grid {
+            display: grid;
+            gap: var(--space-4);
+        }
+        
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+        
+        /* ====== HEADER：现代交易平台风格 ====== */
+        .trading-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-ultralight);
+            padding: var(--space-4) 0;
+            transition: var(--transition-smooth);
+        }
+        
+        .trading-header.scrolled {
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .platform-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        
+        .platform-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        .platform-info h1 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: #1a202c;
+            letter-spacing: -0.02em;
+        }
+        
+        .platform-info p {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 2px;
+        }
+        
+        .platform-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        
+        .action-button {
+            padding: var(--space-2) var(--space-4);
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-full);
+            font-family: var(--font-body);
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #4a5568;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .action-button:hover {
+            background: var(--surface-tertiary);
+            border-color: var(--border-medium);
+            transform: translateY(-1px);
+        }
+        
+        .action-button.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .action-button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* ====== MARKET OVERVIEW BAR ====== */
+        .market-overview {
+            margin: var(--space-6) 0;
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            box-shadow: var(--shadow-medium);
+            transition: var(--transition-smooth);
+        }
+        
+        .market-overview:hover {
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: var(--space-5);
+        }
+        
+        .index-ticker {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+        
+        .ticker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .ticker-name {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #2d3748;
+        }
+        
+        .ticker-code {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+        
+        .ticker-price {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1.4rem;
+            color: #1a202c;
+            line-height: 1;
+        }
+        
+        .ticker-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        
+        .change-positive {
+            background: var(--functional-long-light);
+            color: var(--functional-long);
+        }
+        
+        .change-negative {
+            background: var(--functional-short-light);
+            color: var(--functional-short);
+        }
+        
+        /* ====== TRADING WIDGETS ====== */
+        .widget-grid {
+            margin: var(--space-6) 0;
+        }
+        
+        .trading-widget {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            transition: var(--transition-spring);
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .trading-widget:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-floating);
+            border-color: var(--border-medium);
+        }
+        
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+        }
+        
+        .widget-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1a202c;
+        }
+        
+        .widget-status {
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-confirmed { background: var(--functional-long-light); color: var(--functional-long); }
+        .status-warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .status-alert { background: var(--functional-short-light); color: var(--functional-short); }
+        
+        /* ====== DISTRIBUTION DAYS WIDGET ====== */
+        .distribution-types {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+        
+        .distribution-type {
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            text-align: center;
+            transition: var(--transition-smooth);
+        }
+        
+        .distribution-type:hover {
+            transform: scale(1.05);
+        }
+        
+        .type-count {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .type-name {
+            font-size: 0.75rem;
+            color: #718096;
+        }
+        
+        /* ====== MARKET BREADTH WIDGET ====== */
+        .breadth-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+        
+        .breadth-metric {
+            padding: var(--space-3);
+            background: var(--surface-tertiary);
+            border-radius: var(--radius-md);
+        }
+        
+        .metric-value {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1rem;
+            color: #2d3748;
+            display: block;
+        }
+        
+        .metric-label {
+            font-size: 0.7rem;
+            color: #718096;
+            margin-top: 2px;
+        }
+        
+        /* ====== VOLUME ANALYSIS WIDGET ====== */
+        .volume-ratio-bar {
+            height: 8px;
+            background: var(--surface-tertiary);
+            border-radius: 4px;
+            margin: var(--space-4) 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .volume-ratio-fill {
+            height: 100%;
+            border-radius: 4px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            transition: width var(--transition-smooth);
+        }
+        
+        .volume-up { background: linear-gradient(90deg, #10b981, #34d399); }
+        .volume-down { background: linear-gradient(90deg, #ef4444, #f87171); }
+        
+        .volume-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+        
+        .volume-stat {
+            text-align: center;
+        }
+        
+        /* ====== FOLLOW-THROUGH DAY WIDGET ====== */
+        .ftd-validation {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+        
+        .validation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2) 0;
+            border-bottom: 1px solid var(--border-ultralight);
+        }
+        
+        .validation-item:last-child {
+            border-bottom: none;
+        }
+        
+        .validation-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+        
+        .status-good { background: var(--functional-long-light); color: var(--functional-long); }
+        .status-bad { background: var(--functional-short-light); color: var(--functional-short); }
+        
+        /* ====== INDUSTRY ROTATION WIDGET ====== */
+        .industry-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+        
+        .industry-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-2) var(--space-3);
+            background: var(--surface-tertiary);
+            border-radius: var(--radius-md);
+            transition: var(--transition-fast);
+        }
+        
+        .industry-item:hover {
+            background: var(--surface-secondary);
+            transform: translateX(4px);
+        }
+        
+        .industry-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .industry-change {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        
+        .change-up { color: var(--functional-long); }
+        .change-down { color: var(--functional-short); }
+        
+        /* ====== MARKET HEALTH INDICATOR ====== */
+        .health-indicator {
+            margin: var(--space-6) 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .health-indicator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+        }
+        
+        .health-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .health-score {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 3rem;
+            color: white;
+            line-height: 1;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .health-details {
+            display: flex;
+            gap: var(--space-8);
+        }
+        
+        .health-metric {
+            text-align: center;
+        }
+        
+        .health-value {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 4px;
+        }
+        
+        .health-label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        
+        /* ====== TRADING RECOMMENDATIONS ====== */
+        .recommendations-panel {
+            margin: var(--space-6) 0;
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-5);
+        }
+        
+        .recommendation-card {
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            transition: var(--transition-smooth);
+        }
+        
+        .recommendation-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .recommendation-buy {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.02));
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .recommendation-sell {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.02));
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        
+        .recommendation-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-2);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .recommendation-content {
+            font-size: 0.85rem;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+        
+        /* ====== FOOTER ====== */
+        .trading-footer {
+            margin-top: var(--space-8);
+            padding: var(--space-5);
+            background: var(--surface-tertiary);
+            border-top: 1px solid var(--border-light);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .footer-info {
+            font-size: 0.8rem;
+            color: #718096;
+        }
+        
+        .footer-actions {
+            display: flex;
+            gap: var(--space-3);
+        }
+        
+        /* ====== RESPONSIVE ====== */
+        @media (max-width: 1400px) {
+            .overview-grid { grid-template-columns: repeat(4, 1fr); }
+            .grid-cols-4 { grid-template-columns: repeat(3, 1fr); }
+            .health-details { gap: var(--space-6); }
+        }
+        
+        @media (max-width: 1200px) {
+            .overview-grid { grid-template-columns: repeat(3, 1fr); }
+            .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+            .recommendations-grid { grid-template-columns: 1fr; }
+            .health-content { flex-direction: column; gap: var(--space-6); }
+            .health-details { gap: var(--space-8); }
+        }
+        
+        @media (max-width: 992px) {
+            .overview-grid { grid-template-columns: repeat(2, 1fr); }
+            .grid-cols-2, .grid-cols-3, .grid-cols-4 { grid-template-columns: 1fr; }
+            .header-content { flex-direction: column; gap: var(--space-4); }
+            .platform-actions { width: 100%; justify-content: center; }
+            .health-details { flex-wrap: wrap; justify-content: center; gap: var(--space-6); }
+        }
+        
+        @media (max-width: 768px) {
+            .overview-grid { grid-template-columns: 1fr; }
+            .container { padding: 0 var(--space-3); }
+            .distribution-types { grid-template-columns: 1fr; }
+            .breadth-metrics { grid-template-columns: 1fr; }
+            .footer-content { flex-direction: column; gap: var(--space-4); text-align: center; }
+        }
+        
+        /* ====== ANIMATIONS ====== */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slide-up var(--transition-spring) ease-out;
+        }
+        
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 交易平台头部 -->
+    <header class="trading-header" id="tradingHeader">
+        <div class="container header-content">
+            <div class="platform-brand">
+                <div class="platform-logo float-animation">TD</div>
+                <div class="platform-info">
+                    <h1>轻量交易仪表板</h1>
+                    <p>欧奈尔市场扫描 · 实时决策支持</p>
+                </div>
+            </div>
+            
+            <div class="platform-actions">
+                <button class="action-button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                    刷新数据
+                </button>
+                <button class="action-button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                    </svg>
+                    主题切换
+                </button>
+                <button class="action-button primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    生成报告
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container">
+        <!-- 市场概览 -->
+        <section class="market-overview slide-up">
+            <div class="overview-grid">
+                <div class="index-ticker">
+                    <div class="ticker-header">
+                        <span class="ticker-name">上证指数</span>
+                        <span class="ticker-code">000001</span>
+                    </div>
+                    <div class="ticker-price">3,250.68</div>
+                    <div class="ticker-change change-positive">+0.85%</div>
+                </div>
+                
+                <div class="index-ticker">
+                    <div class="ticker-header">
+                        <span class="ticker-name">深证成指</span>
+                        <span class="ticker-code">399001</span>
+                    </div>
+                    <div class="ticker-price">11,250.42</div>
+                    <div class="ticker-change change-positive">+1.42%</div>
+                </div>
+                
+                <div class="index-ticker">
+                    <div class="ticker-header">
+                        <span class="ticker-name">创业板指</span>
+                        <span class="ticker-code">399006</span>
+                    </div>
+                    <div class="ticker-price">2,350.17</div>
+                    <div class="ticker-change change-positive">+2.15%</div>
+                </div>
+                
+                <div class="index-ticker">
+                    <div class="ticker-header">
+                        <span class="ticker-name">科创50</span>
+                        <span class="ticker-code">000688</span>
+                    </div>
+                    <div class="ticker-price">985.42</div>
+                    <div class="ticker-change change-positive">+0.68%</div>
+                </div>
+                
+                <div class="index-ticker">
+                    <div class="ticker-header">
+                        <span class="ticker-name">中证全指</span>
+                        <span class="ticker-code">000985</span>
+                    </div>
+                    <div class="ticker-price">4,850.25</div>
+                    <div class="ticker-change change-positive">+1.25%</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 交易小部件网格 -->
+        <div class="widget-grid grid grid-cols-3">
+            <!-- 抛盘日追踪 -->
+            <div class="trading-widget slide-up">
+                <div class="widget-header">
+                    <div class="widget-title">抛盘日追踪</div>
+                    <div class="widget-status status-warning">警戒 (7/25)</div>
+                </div>
+                
+                <div class="text-value-large" style="color: #ef4444;">7</div>
+                <div class="text-caption">25日内抛盘日总数，接近警戒阈值</div>
+                
+                <div class="distribution-types">
+                    <div class="distribution-type" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3);">
+                        <span class="type-count" style="color: #ef4444;">4</span>
+                        <span class="type-name">标准抛盘</span>
+                    </div>
+                    <div class="distribution-type" style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.3);">
+                        <span class="type-count" style="color: #f97316;">2</span>
+                        <span class="type-name">假阳抛盘</span>
+                    </div>
+                    <div class="distribution-type" style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.3);">
+                        <span class="type-count" style="color: #8b5cf6;">1</span>
+                        <span class="type-name">盘中反转</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-3); font-size: 0.75rem; color: #718096;">
+                    日期: 03-28, 03-30, 04-01, 04-02, 04-05, 04-08, 04-10
+                </div>
+            </div>
+
+            <!-- 追盘日有效性 -->
+            <div class="trading-widget slide-up">
+                <div class="widget-header">
+                    <div class="widget-title">追盘日验证</div>
+                    <div class="widget-status status-confirmed">已确认</div>
+                </div>
+                
+                <div class="text-value-large" style="color: #10b981;">✓ 有效</div>
+                <div class="text-caption">2026-04-05确认，FTD后表现持续良好</div>
+                
+                <div class="ftd-validation">
+                    <div class="validation-item">
+                        <span class="text-label">FTD涨幅</span>
+                        <span class="text-value">+2.3%</span>
+                    </div>
+                    <div class="validation-item">
+                        <span class="text-label">放量比</span>
+                        <span class="text-value">1.8x</span>
+                    </div>
+                    <div class="validation-item">
+                        <span class="text-label">持续时间</span>
+                        <span class="text-value">7天</span>
+                    </div>
+                    <div class="validation-item">
+                        <span class="text-label">有效性验证</span>
+                        <div class="validation-status status-good">✓</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 市场宽度深度 -->
+            <div class="trading-widget slide-up">
+                <div class="widget-header">
+                    <div class="widget-title">市场宽度深度</div>
+                    <div class="widget-status status-confirmed">改善中</div>
+                </div>
+                
+                <div class="text-value-large" style="color: #3b82f6;">142</div>
+                <div class="text-caption">创52周新高股票数量，较上周+18</div>
+                
+                <div class="breadth-metrics">
+                    <div class="breadth-metric">
+                        <span class="metric-value">142</span>
+                        <span class="metric-label">新高</span>
+                    </div>
+                    <div class="breadth-metric">
+                        <span class="metric-value">44</span>
+                        <span class="metric-label">新低</span>
+                    </div>
+                    <div class="breadth-metric">
+                        <span class="metric-value">3.2:1</span>
+                        <span class="metric-label">新高比</span>
+                    </div>
+                    <div class="breadth-metric">
+                        <span class="metric-value">18.5%</span>
+                        <span class="metric-label">突破股</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 成交量分析 -->
+            <div class="trading-widget slide-up">
+                <div class="widget-header">
+                    <div class="widget-title">成交量分析</div>
+                    <div class="widget-status status-confirmed">良好</div>
+                </div>
+                
+                <div class="text-value-large" style="color: #10b981;">1.33x</div>
+                <div class="text-caption">上涨日/下跌日成交量比值</div>
+                
+                <div class="volume-ratio-bar">
+                    <div class="volume-ratio-fill volume-up" style="width: 57%;"></div>
+                    <div class="volume-ratio-fill volume-down" style="width: 43%; left: 57%;"></div>
+                </div>
+                
+                <div class="volume-stats">
+                    <div class="volume-stat">
+                        <div class="text-value">68.5%</div>
+                        <div class="text-caption">放量突破</div>
+                    </div>
+                    <div class="volume-stat">
+                        <div class="text-value">71.2%</div>
+                        <div class="text-caption">缩量回调</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 市场阶段深度 -->
+            <div class="trading-widget slide-up">
+                <div class="widget-header">
+                    <div class="widget-title">市场阶段深度</div>
+                    <div class="widget-status status-confirmed">结构完整</div>
+                </div>
+                
+                <div class="text-value-large" style="color: #10b981;">3周</div>
+                <div class="text-caption">上升趋势持续21天，回调控制良好</div>
+                
+                <div class="breadth-metrics">
+                    <div class="breadth-metric">
+                        <span class="metric-value">21天</span>
+                        <span class="metric-label">趋势持续</span>
+                    </div>
+                    <div class="breadth-metric">
+                        <span class="metric-value">-6.8%</span>
+                        <span class="metric-label">最大回调</span>
+                    </div>
+                    <div class="breadth-metric">
+                        <span class="metric-value">✓</span>
+                        <span class="metric-label">均线上方</span>
+                    </div>
+                    <div class="breadth-metric">
+                        <span class="metric-value">3日内</span>
+                        <span class="metric-label">回调恢复</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 行业轮动信号 -->
+            <div class="trading-widget slide-up">
+                <div class="widget-header">
+                    <div class="widget-title">行业轮动信号</div>
+                    <div class="widget-status status-confirmed">半导体领涨</div>
+                </div>
+                
+                <div class="text-value-large" style="color: #8b5cf6;">半导体</div>
+                <div class="text-caption">领涨行业，已持续2周，RS持续上升</div>
+                
+                <div class="industry-list">
+                    <div class="industry-item">
+                        <span class="industry-name">半导体</span>
+                        <span class="industry-change change-up">↑2</span>
+                    </div>
+                    <div class="industry-item">
+                        <span class="industry-name">新能源</span>
+                        <span class="industry-change change-up">↑3</span>
+                    </div>
+                    <div class="industry-item">
+                        <span class="industry-name">医药</span>
+                        <span class="industry-change change-down">↓1</span>
+                    </div>
+                    <div class="industry-item">
+                        <span class="industry-name">金融</span>
+                        <span class="industry-change change-down">↓2</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 市场健康度指示器 -->
+        <section class="health-indicator slide-up">
+            <div class="health-content">
+                <div>
+                    <div class="text-label" style="color: rgba(255, 255, 255, 0.9);">市场健康度评分</div>
+                    <div class="health-score pulse-glow">72</div>
+                    <div class="text-caption" style="color: rgba(255, 255, 255, 0.8); margin-top: var(--space-2);">
+                        基于欧奈尔指标的综合评估
+                    </div>
+                </div>
+                
+                <div class="health-details">
+                    <div class="health-metric">
+                        <div class="health-value">65%</div>
+                        <div class="health-label">建议仓位</div>
+                    </div>
+                    <div class="health-metric">
+                        <div class="health-value">7</div>
+                        <div class="health-label">抛盘日</div>
+                    </div>
+                    <div class="health-metric">
+                        <div class="health-value">警戒</div>
+                        <div class="health-label">风险等级</div>
+                    </div>
+                    <div class="health-metric">
+                        <div class="health-value">上升</div>
+                        <div class="health-label">市场阶段</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 交易建议面板 -->
+        <section class="recommendations-panel slide-up">
+            <div class="widget-header" style="margin-bottom: var(--space-4);">
+                <div class="widget-title">操作建议与风险管理</div>
+            </div>
+            
+            <div class="recommendations-grid">
+                <div class="recommendation-card recommendation-buy">
+                    <div class="recommendation-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        建议操作
+                    </div>
+                    <div class="recommendation-content">
+                        维持65%仓位配置，重点关注半导体、新能源等领涨行业中的强势股。创业板、科创50表现领先，可作为配置重点。
+                    </div>
+                </div>
+                
+                <div class="recommendation-card recommendation-sell">
+                    <div class="recommendation-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        风险提示
+                    </div>
+                    <div class="recommendation-content">
+                        抛盘日数量达到警戒水平(7日)，若增至8日需立即减仓。关注金融板块的持续弱势，回避抛盘日≥8的行业与相对强度下降板块。
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border-light);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="text-label">关注重点</div>
+                        <div class="text-value">创业板、科创50表现与成交量配合</div>
+                    </div>
+                    <div>
+                        <div class="text-label">止损条件</div>
+                        <div class="text-value">健康度<50连续3日 或 抛盘日≥8 或 追盘日失效</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="trading-footer slide-up">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <div>数据源: Lixinger API · 最后更新: 2026-04-12 12:30:45</div>
+                    <div style="margin-top: 4px; font-size: 0.75rem; color: #a0aec0;">
+                        本仪表板基于欧奈尔(CAN SLIM)投资体系设计，仅供参考
+                    </div>
+                </div>
+                
+                <div class="footer-actions">
+                    <button class="action-button" style="font-size: 0.8rem;">
+                        导出报告
+                    </button>
+                    <button class="action-button" style="font-size: 0.8rem;">
+                        分享视图
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化Lucide图标
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
+            // 头部滚动效果
+            const header = document.getElementById('tradingHeader');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+            
+            // 交易小部件交互
+            document.querySelectorAll('.trading-widget').forEach(widget => {
+                widget.addEventListener('click', function(e) {
+                    if (!e.target.closest('button')) {
+                        // 实际应用中这里会打开详细视图
+                        const title = this.querySelector('.widget-title').textContent;
+                        console.log(`打开详细视图: ${title}`);
+                        
+                        // 视觉反馈
+                        this.style.transform = 'scale(0.98)';
+                        setTimeout(() => {
+                            this.style.transform = '';
+                        }, 200);
+                    }
+                });
+            });
+            
+            // 行业项点击
+            document.querySelectorAll('.industry-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const industry = this.querySelector('.industry-name').textContent;
+                    console.log(`查看行业详情: ${industry}`);
+                });
+            });
+            
+            // 控制台按钮交互
+            document.querySelectorAll('.action-button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const text = this.textContent.trim();
+                    console.log(`操作: ${text}`);
+                    
+                    // 视觉反馈
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            });
+            
+            // 模拟数据刷新
+            let refreshCount = 0;
+            const refreshButton = document.querySelector('.action-button:nth-child(1)');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', function() {
+                    refreshCount++;
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> 刷新中...';
+                    this.disabled = true;
+                    
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                        
+                        // 更新部分数据
+                        if (refreshCount % 3 === 0) {
+                            const healthScore = document.querySelector('.health-score');
+                            if (healthScore) {
+                                const currentScore = parseInt(healthScore.textContent);
+                                const newScore = Math.min(100, currentScore + Math.random() * 3 - 1);
+                                healthScore.textContent = Math.round(newScore);
+                            }
+                        }
+                        
+                        console.log(`数据刷新完成 (${refreshCount}次)`);
+                    }, 1500);
+                });
+            }
+            
+            // 添加进入动画
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+            
+            // 初始设置
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s ease-out';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市场热力图 · 欧奈尔宏观扫描</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- 使用现代工业风格的字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* ====== 工业数据美学：FINVIZ风格热力图 ====== */
+        :root {
+            /* 核心色彩系统：数据驱动，高对比度 */
+            --surface-primary: #ffffff;
+            --surface-secondary: #f8fafc;
+            --surface-tertiary: #f1f5f9;
+            --surface-elevated: #ffffff;
+            
+            /* 边界系统 */
+            --border-light: #e2e8f0;
+            --border-medium: #cbd5e1;
+            --border-strong: #94a3b8;
+            
+            /* 数据语义色彩 - 热力图核心 */
+            --data-critical: #ef4444;     /* 严重负面：深红 */
+            --data-warning: #f97316;      /* 警告：橙色 */
+            --data-neutral: #64748b;      /* 中性：石板色 */
+            --data-positive: #10b981;     /* 正面：翡翠绿 */
+            --data-strong: #3b82f6;       /* 强正面：蓝色 */
+            --data-excellent: #06b6d4;    /* 优异：青色 */
+            
+            /* 热力图梯度 */
+            --heat-gradient-0: #dc2626;   /* 最严重 */
+            --heat-gradient-1: #ef4444;
+            --heat-gradient-2: #f87171;
+            --heat-gradient-3: #fca5a5;
+            --heat-gradient-4: #fecaca;
+            --heat-gradient-5: #f1f5f9;   /* 中性 */
+            --heat-gradient-6: #bbf7d0;
+            --heat-gradient-7: #86efac;
+            --heat-gradient-8: #4ade80;
+            --heat-gradient-9: #22c55e;   /* 最优 */
+            
+            /* 功能色 */
+            --functional-buy: #10b981;
+            --functional-sell: #ef4444;
+            --functional-hold: #f59e0b;
+            --functional-watch: #8b5cf6;
+            
+            /* 字体系统：工业单色 */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            
+            /* 空间系统：紧凑但清晰 */
+            --radius-sm: 2px;
+            --radius-md: 4px;
+            --radius-lg: 6px;
+            --radius-xl: 8px;
+            
+            /* 阴影系统：极简 */
+            --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-medium: 0 2px 4px rgba(0, 0, 0, 0.08);
+            --shadow-elevated: 0 4px 8px rgba(0, 0, 0, 0.12);
+            
+            /* 动画系统：精确 */
+            --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ====== BASE ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            font-size: 13px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: var(--surface-primary);
+            color: #1e293b;
+            line-height: 1.5;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* ====== LAYOUT ====== */
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+        
+        .grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+        .grid-cols-6 { grid-template-columns: repeat(6, 1fr); }
+        
+        /* ====== HEADER：工业控制台风格 ====== */
+        .console-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--surface-primary);
+            border-bottom: 2px solid var(--border-medium);
+            padding: 12px 0;
+            backdrop-filter: blur(8px);
+        }
+        
+        .console-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .console-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .console-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #1e293b, #475569);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: white;
+            font-size: 1.1rem;
+            letter-spacing: -0.5px;
+        }
+        
+        .console-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #1e293b;
+            letter-spacing: -0.01em;
+        }
+        
+        .console-subtitle {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 2px;
+            font-family: var(--font-mono);
+        }
+        
+        .console-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .control-button {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            color: #475569;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .control-button:hover {
+            background: var(--surface-tertiary);
+            border-color: var(--border-medium);
+        }
+        
+        .control-button.active {
+            background: #1e293b;
+            color: white;
+            border-color: #1e293b;
+        }
+        
+        /* ====== 市场状态指示条 ====== */
+        .status-ribbon {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 10px 16px;
+            margin: 12px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.green { background: var(--data-positive); }
+        .status-dot.yellow { background: var(--data-warning); }
+        .status-dot.red { background: var(--data-critical); }
+        
+        .status-text {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .status-metric {
+            display: flex;
+            gap: 24px;
+        }
+        
+        .metric-item {
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1e293b;
+        }
+        
+        .metric-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* ====== 核心热力图 ====== */
+        .heatmap-section {
+            margin: 20px 0;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .section-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1e293b;
+        }
+        
+        .section-subtitle {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+        
+        .heatmap-container {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-medium);
+        }
+        
+        /* 热力图表头 */
+        .heatmap-header {
+            display: grid;
+            grid-template-columns: 120px repeat(8, 1fr);
+            background: var(--surface-secondary);
+            border-bottom: 2px solid var(--border-medium);
+        }
+        
+        .header-cell {
+            padding: 10px 8px;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #475569;
+            border-right: 1px solid var(--border-light);
+        }
+        
+        .header-cell:last-child {
+            border-right: none;
+        }
+        
+        /* 热力图表体 */
+        .heatmap-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .heatmap-row {
+            display: grid;
+            grid-template-columns: 120px repeat(8, 1fr);
+            border-bottom: 1px solid var(--border-light);
+            transition: var(--transition-fast);
+        }
+        
+        .heatmap-row:hover {
+            background: rgba(30, 41, 59, 0.02);
+        }
+        
+        .row-label {
+            padding: 12px 10px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #1e293b;
+            background: var(--surface-secondary);
+            border-right: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .heatmap-cell {
+            padding: 12px 8px;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 0.85rem;
+            border-right: 1px solid var(--border-light);
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .heatmap-cell:hover {
+            z-index: 2;
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .heatmap-cell:last-child {
+            border-right: none;
+        }
+        
+        /* 热力图颜色编码 */
+        .heat-critical { background: var(--heat-gradient-0); color: white; }
+        .heat-high-negative { background: var(--heat-gradient-1); color: white; }
+        .heat-medium-negative { background: var(--heat-gradient-2); color: #1e293b; }
+        .heat-low-negative { background: var(--heat-gradient-3); color: #1e293b; }
+        .heat-slight-negative { background: var(--heat-gradient-4); color: #1e293b; }
+        .heat-neutral { background: var(--heat-gradient-5); color: #475569; }
+        .heat-slight-positive { background: var(--heat-gradient-6); color: #1e293b; }
+        .heat-low-positive { background: var(--heat-gradient-7); color: #1e293b; }
+        .heat-medium-positive { background: var(--heat-gradient-8); color: #1e293b; }
+        .heat-high-positive { background: var(--heat-gradient-9); color: white; }
+        
+        /* ====== 欧奈尔专项指标卡片 ====== */
+        .oneil-metric-card {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: var(--transition-base);
+        }
+        
+        .oneil-metric-card:hover {
+            box-shadow: var(--shadow-elevated);
+            border-color: var(--border-strong);
+        }
+        
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .metric-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1e293b;
+        }
+        
+        .metric-value-large {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+        
+        .metric-detail {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        
+        /* 抛盘日类型细分 */
+        .distribution-breakdown {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .distribution-type {
+            padding: 8px;
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+        
+        .type-standard { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .type-fake-yang { background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); }
+        .type-intraday { background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); }
+        
+        .type-count {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1rem;
+            display: block;
+        }
+        
+        .type-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        /* ====== 市场宽度矩阵 ====== */
+        .breadth-matrix {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .breadth-item {
+            padding: 8px;
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+        
+        .breadth-value {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1e293b;
+            display: block;
+        }
+        
+        .breadth-label {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        /* ====== 成交量分析 ====== */
+        .volume-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .volume-item {
+            padding: 8px;
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+        }
+        
+        .volume-ratio {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1e293b;
+        }
+        
+        .volume-desc {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        /* ====== 底部控制台 ====== */
+        .console-footer {
+            margin-top: 24px;
+            padding: 16px;
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-lg);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+        
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        
+        .footer-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .footer-label {
+            color: #64748b;
+            font-size: 0.7rem;
+        }
+        
+        .footer-value {
+            color: #1e293b;
+            font-weight: 500;
+        }
+        
+        /* ====== 响应式 ====== */
+        @media (max-width: 1400px) {
+            .heatmap-header,
+            .heatmap-row {
+                grid-template-columns: 100px repeat(7, 1fr);
+            }
+            .grid-cols-4 { grid-template-columns: repeat(3, 1fr); }
+        }
+        
+        @media (max-width: 1200px) {
+            .heatmap-header,
+            .heatmap-row {
+                grid-template-columns: 100px repeat(6, 1fr);
+            }
+            .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+            .footer-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        @media (max-width: 992px) {
+            .heatmap-header,
+            .heatmap-row {
+                grid-template-columns: 100px repeat(5, 1fr);
+            }
+            .console-nav { flex-direction: column; gap: 16px; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+            .breadth-matrix { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        @media (max-width: 768px) {
+            .heatmap-header,
+            .heatmap-row {
+                grid-template-columns: 100px repeat(4, 1fr);
+            }
+            .container { padding: 0 12px; }
+            .grid-cols-4, .grid-cols-3 { grid-template-columns: 1fr; }
+            .distribution-breakdown { grid-template-columns: 1fr; }
+        }
+        
+        /* ====== 动画 ====== */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .live-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn var(--transition-base) ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- 控制台头部 -->
+    <header class="console-header">
+        <div class="container console-nav">
+            <div class="console-brand">
+                <div class="console-logo">HEAT</div>
+                <div>
+                    <div class="console-title">市场热力图 · 欧奈尔宏观扫描</div>
+                    <div class="console-subtitle">数据驱动决策矩阵 | 实时颜色编码</div>
+                </div>
+            </div>
+            
+            <div class="console-controls">
+                <button class="control-button active">
+                    <span>📈</span>
+                    热力图
+                </button>
+                <button class="control-button">
+                    <span>📊</span>
+                    仪表板
+                </button>
+                <button class="control-button">
+                    <span>🔍</span>
+                    深度分析
+                </button>
+                <div style="width: 1px; height: 20px; background: var(--border-light);"></div>
+                <button class="control-button">
+                    <span>🔄</span>
+                    刷新数据
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主容器 -->
+    <main class="container">
+        <!-- 状态指示条 -->
+        <div class="status-ribbon slide-in">
+            <div class="status-indicator">
+                <div class="status-dot green"></div>
+                <div class="status-text">市场状态：上升趋势确认</div>
+            </div>
+            <div class="status-metric">
+                <div class="metric-item">
+                    <div class="metric-value">72</div>
+                    <div class="metric-label">健康度</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">7</div>
+                    <div class="metric-label">抛盘日</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">65%</div>
+                    <div class="metric-label">建议仓位</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">警戒</div>
+                    <div class="metric-label">风险等级</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 核心热力图 -->
+        <section class="heatmap-section">
+            <div class="section-header">
+                <div>
+                    <div class="section-title">欧奈尔指标热力图矩阵</div>
+                    <div class="section-subtitle">颜色编码：深红(危险) → 白色(中性) → 深绿(优秀)</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.75rem; color: #64748b;">数据时间: 2026-04-12 12:30</span>
+                </div>
+            </div>
+            
+            <div class="heatmap-container">
+                <!-- 表头 -->
+                <div class="heatmap-header">
+                    <div class="header-cell">指数</div>
+                    <div class="header-cell">抛盘日</div>
+                    <div class="header-cell">追盘日</div>
+                    <div class="header-cell">市场宽度</div>
+                    <div class="header-cell">成交量</div>
+                    <div class="header-cell">相对强度</div>
+                    <div class="header-cell">回调深度</div>
+                    <div class="header-cell">行业轮动</div>
+                    <div class="header-cell">综合评分</div>
+                </div>
+                
+                <!-- 表体 -->
+                <div class="heatmap-body">
+                    <!-- 上证指数 -->
+                    <div class="heatmap-row">
+                        <div class="row-label">
+                            <span>📊</span>
+                            上证指数
+                        </div>
+                        <div class="heatmap-cell heat-critical" title="标准抛盘日: 4, 假阳: 2, 盘中反转: 1">7</div>
+                        <div class="heatmap-cell heat-medium-positive" title="已确认, 2026-04-05, +2.3%, 放量1.8x">确认</div>
+                        <div class="heatmap-cell heat-slight-positive" title="涨跌比: 1.8:1, 新高/新低: 3.2:1">65%</div>
+                        <div class="heatmap-cell heat-neutral" title="上涨日: 1.2万亿, 下跌日: 0.9万亿">1.33x</div>
+                        <div class="heatmap-cell heat-low-positive" title="相对强度: 68/100">68</div>
+                        <div class="heatmap-cell heat-slight-positive" title="最大回调: -6.8%, 恢复: 3日内">-6.8%</div>
+                        <div class="heatmap-cell heat-low-negative" title="金融板块RS下降">↓2</div>
+                        <div class="heatmap-cell heat-slight-positive" title="综合评分: 72/100">72</div>
+                    </div>
+                    
+                    <!-- 深证成指 -->
+                    <div class="heatmap-row">
+                        <div class="row-label">
+                            <span>📈</span>
+                            深证成指
+                        </div>
+                        <div class="heatmap-cell heat-high-negative" title="标准抛盘日: 3, 假阳: 1">4</div>
+                        <div class="heatmap-cell heat-high-positive" title="已确认, 表现优秀">优秀</div>
+                        <div class="heatmap-cell heat-medium-positive" title="涨跌比: 2.1:1, 新高/新低: 4.5:1">78%</div>
+                        <div class="heatmap-cell heat-low-positive" title="上涨日: 1.5万亿, 下跌日: 1.1万亿">1.36x</div>
+                        <div class="heatmap-cell heat-medium-positive" title="相对强度: 78/100">78</div>
+                        <div class="heatmap-cell heat-slight-positive" title="最大回调: -5.2%, 恢复: 2日内">-5.2%</div>
+                        <div class="heatmap-cell heat-slight-positive" title="科技板块领涨">↑1</div>
+                        <div class="heatmap-cell heat-medium-positive" title="综合评分: 81/100">81</div>
+                    </div>
+                    
+                    <!-- 创业板指 -->
+                    <div class="heatmap-row">
+                        <div class="row-label">
+                            <span>🚀</span>
+                            创业板指
+                        </div>
+                        <div class="heatmap-cell heat-medium-negative" title="标准抛盘日: 2">2</div>
+                        <div class="heatmap-cell heat-high-positive" title="强确认, 放量突破">强确认</div>
+                        <div class="heatmap-cell heat-high-positive" title="涨跌比: 3.2:1, 新高/新低: 8.2:1">92%</div>
+                        <div class="heatmap-cell heat-high-positive" title="上涨日: 2.1万亿, 下跌日: 1.3万亿">1.62x</div>
+                        <div class="heatmap-cell heat-high-positive" title="相对强度: 92/100, 最强指数">92</div>
+                        <div class="heatmap-cell heat-slight-positive" title="最大回调: -4.8%, 恢复: 1日内">-4.8%</div>
+                        <div class="heatmap-cell heat-high-positive" title="新能源、半导体领涨">↑3</div>
+                        <div class="heatmap-cell heat-high-positive" title="综合评分: 94/100">94</div>
+                    </div>
+                    
+                    <!-- 科创50 -->
+                    <div class="heatmap-row">
+                        <div class="row-label">
+                            <span>💡</span>
+                            科创50
+                        </div>
+                        <div class="heatmap-cell heat-low-negative" title="标准抛盘日: 1, 假阳: 1">2</div>
+                        <div class="heatmap-cell heat-medium-positive" title="确认, 需观察持续性">确认</div>
+                        <div class="heatmap-cell heat-medium-positive" title="涨跌比: 2.4:1, 新高/新低: 6.5:1">85%</div>
+                        <div class="heatmap-cell heat-medium-positive" title="上涨日: 1.8万亿, 下跌日: 1.2万亿">1.50x</div>
+                        <div class="heatmap-cell heat-medium-positive" title="相对强度: 85/100">85</div>
+                        <div class="heatmap-cell heat-neutral" title="最大回调: -7.2%, 恢复: 4日内">-7.2%</div>
+                        <div class="heatmap-cell heat-medium-positive" title="半导体行业强劲">↑2</div>
+                        <div class="heatmap-cell heat-medium-positive" title="综合评分: 83/100">83</div>
+                    </div>
+                    
+                    <!-- 中证全指 -->
+                    <div class="heatmap-row">
+                        <div class="row-label">
+                            <span>🌐</span>
+                            中证全指
+                        </div>
+                        <div class="heatmap-cell heat-high-negative" title="标准抛盘日: 3, 假阳: 1, 盘中反转: 1">5</div>
+                        <div class="heatmap-cell heat-slight-positive" title="确认但强度一般">确认</div>
+                        <div class="heatmap-cell heat-slight-positive" title="涨跌比: 1.5:1, 新高/新低: 2.8:1">72%</div>
+                        <div class="heatmap-cell heat-neutral" title="上涨日: 1.4万亿, 下跌日: 1.1万亿">1.27x</div>
+                        <div class="heatmap-cell heat-slight-positive" title="相对强度: 72/100">72</div>
+                        <div class="heatmap-cell heat-slight-negative" title="最大回调: -8.1%, 接近危险">-8.1%</div>
+                        <div class="heatmap-cell heat-neutral" title="行业分化明显">→0</div>
+                        <div class="heatmap-cell heat-slight-positive" title="综合评分: 70/100">70</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 欧奈尔专项指标 -->
+        <div class="grid grid-cols-3" style="margin: 24px 0; gap: 16px;">
+            <!-- 抛盘日深度分析 -->
+            <div class="oneil-metric-card slide-in">
+                <div class="metric-header">
+                    <div class="metric-title">抛盘日类型细分</div>
+                    <div class="metric-value-large" style="color: var(--data-critical);">7</div>
+                </div>
+                <div class="metric-detail">
+                    25日内抛盘日总数，接近警戒水平(8日)。需关注标准抛盘日的密集出现。
+                </div>
+                <div class="distribution-breakdown">
+                    <div class="distribution-type type-standard">
+                        <span class="type-count">4</span>
+                        <span class="type-label">标准抛盘</span>
+                    </div>
+                    <div class="distribution-type type-fake-yang">
+                        <span class="type-count">2</span>
+                        <span class="type-label">假阳抛盘</span>
+                    </div>
+                    <div class="distribution-type type-intraday">
+                        <span class="type-count">1</span>
+                        <span class="type-label">盘中反转</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 追盘日有效性 -->
+            <div class="oneil-metric-card slide-in">
+                <div class="metric-header">
+                    <div class="metric-title">追盘日有效性验证</div>
+                    <div class="metric-value-large" style="color: var(--data-positive);">✓ 良好</div>
+                </div>
+                <div class="metric-detail">
+                    2026-04-05确认追盘日，FTD后4-7日表现持续良好，成交量保持健康。
+                </div>
+                <div class="breadth-matrix">
+                    <div class="breadth-item">
+                        <span class="breadth-value">+2.3%</span>
+                        <span class="breadth-label">FTD涨幅</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">1.8x</span>
+                        <span class="breadth-label">放量比</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">7天</span>
+                        <span class="breadth-label">已持续</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">✓</span>
+                        <span class="breadth-label">有效性</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 市场宽度深度 -->
+            <div class="oneil-metric-card slide-in">
+                <div class="metric-header">
+                    <div class="metric-title">市场宽度深度</div>
+                    <div class="metric-value-large" style="color: var(--data-strong);">142</div>
+                </div>
+                <div class="metric-detail">
+                    创52周新高股票数量，较上周增加18只。市场广度持续改善。
+                </div>
+                <div class="breadth-matrix">
+                    <div class="breadth-item">
+                        <span class="breadth-value">142</span>
+                        <span class="breadth-label">新高</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">44</span>
+                        <span class="breadth-label">新低</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">3.2:1</span>
+                        <span class="breadth-label">新高比</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">18.5%</span>
+                        <span class="breadth-label">突破股</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二行指标 -->
+        <div class="grid grid-cols-3" style="margin: 24px 0; gap: 16px;">
+            <!-- 成交量分析 -->
+            <div class="oneil-metric-card slide-in">
+                <div class="metric-header">
+                    <div class="metric-title">成交量分析</div>
+                    <div class="metric-value-large" style="color: var(--data-positive);">1.33x</div>
+                </div>
+                <div class="metric-detail">
+                    上涨日成交量 vs 下跌日成交量比值，量价配合良好。
+                </div>
+                <div class="volume-metrics">
+                    <div class="volume-item">
+                        <div class="volume-ratio">68.5%</div>
+                        <div class="volume-desc">放量突破比例</div>
+                    </div>
+                    <div class="volume-item">
+                        <div class="volume-ratio">71.2%</div>
+                        <div class="volume-desc">缩量回调比例</div>
+                    </div>
+                    <div class="volume-item">
+                        <div class="volume-ratio">充足</div>
+                        <div class="volume-desc">关键位成交量</div>
+                    </div>
+                    <div class="volume-item">
+                        <div class="volume-ratio">良好</div>
+                        <div class="volume-desc">量价配合</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 市场阶段深度 -->
+            <div class="oneil-metric-card slide-in">
+                <div class="metric-header">
+                    <div class="metric-title">市场阶段深度</div>
+                    <div class="metric-value-large" style="color: var(--data-positive);">3周</div>
+                </div>
+                <div class="metric-detail">
+                    上升趋势已持续21天，最大回调未超过8%，趋势结构完整。
+                </div>
+                <div class="breadth-matrix">
+                    <div class="breadth-item">
+                        <span class="breadth-value">21天</span>
+                        <span class="breadth-label">趋势持续</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">-6.8%</span>
+                        <span class="breadth-label">最大回调</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">✓</span>
+                        <span class="breadth-label">均线上方</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">3日内</span>
+                        <span class="breadth-label">回调恢复</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 行业轮动信号 -->
+            <div class="oneil-metric-card slide-in">
+                <div class="metric-header">
+                    <div class="metric-title">行业轮动信号</div>
+                    <div class="metric-value-large" style="color: var(--data-excellent);">半导体</div>
+                </div>
+                <div class="metric-detail">
+                    当前领涨行业为半导体，已持续领涨2周，RS持续上升。
+                </div>
+                <div class="breadth-matrix">
+                    <div class="breadth-item">
+                        <span class="breadth-value">↑2</span>
+                        <span class="breadth-label">半导体</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">↑3</span>
+                        <span class="breadth-label">新能源</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">↓1</span>
+                        <span class="breadth-label">医药</span>
+                    </div>
+                    <div class="breadth-item">
+                        <span class="breadth-value">↓2</span>
+                        <span class="breadth-label">金融</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部控制台 -->
+        <div class="console-footer slide-in">
+            <div class="footer-grid">
+                <div class="footer-item">
+                    <span class="footer-label">操作建议</span>
+                    <span class="footer-value">维持65%仓位，关注半导体、新能源</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">风险提示</span>
+                    <span class="footer-value">抛盘日接近阈值，若增至8日需减仓</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">关注重点</span>
+                    <span class="footer-value">创业板、科创50表现与成交量</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">回避区域</span>
+                    <span class="footer-value">抛盘日≥8的行业与RS下降板块</span>
+                </div>
+            </div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light);">
+                <div style="display: flex; gap: 16px; font-size: 0.75rem;">
+                    <span style="color: #64748b;">🛑 止损条件：连续3日市场健康度<50 或 抛盘日≥8 或 追盘日失效</span>
+                    <span style="color: #64748b; margin-left: auto;">📊 数据源: Lixinger API · 更新于: 12:30:45</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 热力图单元格交互
+            document.querySelectorAll('.heatmap-cell').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    const index = this.parentElement.querySelector('.row-label').textContent.trim();
+                    const metric = this.parentElement.children[Array.from(this.parentElement.children).indexOf(this)].textContent;
+                    
+                    // 实际应用中这里会打开详细面板
+                    console.log(`点击: ${index} - ${metric}`);
+                    
+                    // 视觉反馈
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            });
+            
+            // 控制台按钮交互
+            document.querySelectorAll('.control-button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.control-button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // 模拟实时数据更新
+            setInterval(() => {
+                const timeElement = document.querySelector('.section-header span');
+                if (timeElement) {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('zh-CN', { 
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    timeElement.textContent = `数据时间: 2026-04-12 ${timeStr}`;
+                }
+            }, 1000);
+            
+            // 添加悬停效果
+            document.querySelectorAll('.oneil-metric-card').forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-4px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

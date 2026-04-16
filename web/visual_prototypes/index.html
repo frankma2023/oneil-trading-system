@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欧奈尔市场扫描 - 视觉原型集</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .prototypes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+        
+        .prototype-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .prototype-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+        
+        .card-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .tag-primary {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+        
+        .tag-secondary {
+            background: rgba(167, 139, 250, 0.2);
+            color: #a78bfa;
+        }
+        
+        .card-description {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+        
+        .features {
+            margin-bottom: 20px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        
+        .feature-item::before {
+            content: "•";
+            color: #60a5fa;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+        
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+        
+        .view-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: #0f172a;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        
+        .view-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(96, 165, 250, 0.3);
+        }
+        
+        .file-size {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-family: monospace;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        
+        .comparison {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .comparison h2 {
+            color: #f1f5f9;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        
+        td {
+            color: #cbd5e1;
+        }
+        
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        @media (max-width: 768px) {
+            .prototypes-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>欧奈尔市场扫描 · 视觉原型集</h1>
+            <p class="subtitle">针对欧奈尔(CAN SLIM)投资者的三种不同视觉设计方案，探索高信息密度的市场扫描界面</p>
+        </header>
+        
+        <div class="prototypes-grid">
+            <!-- 统一暗色主题系统 -->
+            <div class="prototype-card">
+                <div class="card-header">
+                    <div class="card-title">统一暗色主题系统</div>
+                    <div class="card-tag tag-primary">最新版本</div>
+                </div>
+                <div class="card-description">
+                    基于用户反馈创建的统一暗色主题系统，包含导航栏、日历控件、A股红涨绿跌颜色系统，所有样式和脚本已分离。
+                </div>
+                <div class="features">
+                    <div class="feature-item">中国A股红涨绿跌颜色语义系统</div>
+                    <div class="feature-item">统一导航栏与日历日期选择器</div>
+                    <div class="feature-item">CSS/JS样式分离，可复用组件</div>
+                    <div class="feature-item">统一的字体层级和响应式设计</div>
+                </div>
+                <div class="card-footer">
+                    <span class="view-button" style="background: linear-gradient(135deg, #10b981, #059669);">统一系统</span>
+                    <div class="file-size">CSS+JS: 39.5 KB</div>
+                </div>
+            </div>
+            
+            <!-- 投资组合暗色版 -->
+            <div class="prototype-card">
+                <div class="card-header">
+                    <div class="card-title">投资组合 · 暗色版</div>
+                    <div class="card-tag tag-primary">新页面</div>
+                </div>
+                <div class="card-description">
+                    投资组合页面的暗色主题重设计，使用统一CSS系统，包含持仓列表、绩效图表、风险信号和详细持仓表。
+                </div>
+                <div class="features">
+                    <div class="feature-item">统一暗色主题与导航系统</div>
+                    <div class="feature-item">投资组合绩效图表(ECharts)</div>
+                    <div class="feature-item">持仓列表与详细表格</div>
+                    <div class="feature-item">风险信号汇总与建议</div>
+                </div>
+                <div class="card-footer">
+                    <a href="portfolio_dark_glass.html" class="view-button">查看原型</a>
+                    <div class="file-size">38.5 KB</div>
+                </div>
+            </div>
+            
+            <!-- 持仓哨兵暗色版 -->
+            <div class="prototype-card">
+                <div class="card-header">
+                    <div class="card-title">持仓哨兵 · 暗色版</div>
+                    <div class="card-tag tag-primary">新页面</div>
+                </div>
+                <div class="card-description">
+                    持仓哨兵页面的暗色主题重设计，监控卖出信号与风险指标，包含抛盘日分析、铁路轨道信号、顶部形态检测。
+                </div>
+                <div class="features">
+                    <div class="feature-item">统一暗色主题与日期选择器</div>
+                    <div class="feature-item">抛盘日类型细分与可视化</div>
+                    <div class="feature-item">铁路轨道信号分析</div>
+                    <div class="feature-item">双重顶/三重顶形态检测</div>
+                </div>
+                <div class="card-footer">
+                    <a href="sell_signal_dark_glass.html" class="view-button">查看原型</a>
+                    <div class="file-size">39.2 KB</div>
+                </div>
+            </div>
+            
+            <!-- 个股扫描暗色版 -->
+            <div class="prototype-card">
+                <div class="card-header">
+                    <div class="card-title">个股扫描 · 暗色版</div>
+                    <div class="card-tag tag-primary">新页面</div>
+                </div>
+                <div class="card-description">
+                    个股扫描页面的暗色主题重设计，使用统一CSS系统，包含多维度评分、等级分类、详细面板和交互式表格。
+                </div>
+                <div class="features">
+                    <div class="feature-item">统一暗色主题与导航系统</div>
+                    <div class="feature-item">多维度评分(RS/基本面/量价/形态)</div>
+                    <div class="feature-item">等级分类(A/B/C/D)与筛选</div>
+                    <div class="feature-item">交互式表格与详细面板</div>
+                </div>
+                <div class="card-footer">
+                    <a href="stock_screening_dark_glass.html" class="view-button">查看原型</a>
+                    <div class="file-size">45.1 KB</div>
+                </div>
+            </div>
+            
+            <!-- 行业扫描暗色版 -->
+            <div class="prototype-card">
+                <div class="card-header">
+                    <div class="card-title">行业扫描 · 暗色版</div>
+                    <div class="card-tag tag-primary">新页面</div>
+                </div>
+                <div class="card-description">
+                    行业扫描页面的暗色主题重设计，包含行业热力图、相对强度矩阵、龙头股识别和行业轮动分析。
+                </div>
+                <div class="features">
+                    <div class="feature-item">行业热力图与颜色编码</div>
+                    <div class="feature-item">相对强度矩阵分析</div>
+                    <div class="feature-item">龙头股识别与筛选</div>
+                    <div class="feature-item">行业轮动趋势可视化</div>
+                </div>
+                <div class="card-footer">
+                    <a href="sector_scan_dark_glass.html" class="view-button">查看原型</a>
+                    <div class="file-size">42.8 KB</div>
+                </div>
+            </div>
+            
+            <!-- 暗夜热力图 · 毛玻璃版 -->
+            <div class="prototype-card">
+                <div class="card-header">
+                    <div class="card-title">暗夜热力图 · 毛玻璃版</div>
+                    <div class="card-tag tag-secondary">推荐版本</div>
+                </div>
+                <div class="card-description">
+                    深色主题结合毛玻璃效果，保持Finviz风格的高信息密度热力图矩阵。专为长时间监控设计，视觉舒适且数据呈现清晰。
+                </div>
+                <div class="features">
+                    <div class="feature-item">5×9热力图矩阵，45个数据点一目了然</div>
+                    <div class="feature-item">毛玻璃效果卡片，现代视觉层次</div>
+                    <div class="feature-item">抛盘日三种类型细分展示</div>
+                    <div class="feature-item">完整的欧奈尔指标覆盖</div>
+                </div>
+                <div class="card-footer">
+                    <a href="finviz_dark_glass_dashboard.html" class="view-button">查看原型</a>
+                    <div class="file-size">45.7 KB</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="comparison">
+            <h2>原型对比分析</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>原型名称</th>
+                        <th>信息密度</th>
+                        <th>视觉风格</th>
+                        <th>交互体验</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>统一暗色主题系统</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>统一暗色设计系统</td>
+                        <td>完整导航+日历+交互</td>
+                        <td>全站统一、生产就绪</td>
+                    </tr>
+                    <tr>
+                        <td>投资组合暗色版</td>
+                        <td>⭐⭐⭐⭐</td>
+                        <td>暗色毛玻璃</td>
+                        <td>图表+表格+交互</td>
+                        <td>持仓管理、绩效分析</td>
+                    </tr>
+                    <tr>
+                        <td>持仓哨兵暗色版</td>
+                        <td>⭐⭐⭐⭐</td>
+                        <td>暗色信号监控</td>
+                        <td>信号分析+可视化</td>
+                        <td>风险监控、卖出决策</td>
+                    </tr>
+                    <tr>
+                        <td>个股扫描暗色版</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>暗色数据表格</td>
+                        <td>表格筛选+详细面板</td>
+                        <td>个股筛选、深度分析</td>
+                    </tr>
+                    <tr>
+                        <td>行业扫描暗色版</td>
+                        <td>⭐⭐⭐⭐</td>
+                        <td>暗色热力图</td>
+                        <td>热力图+矩阵分析</td>
+                        <td>行业轮动、相对强度</td>
+                    </tr>
+                    <tr>
+                        <td>暗夜热力图</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>深色毛玻璃</td>
+                        <td>热力图悬停+点击</td>
+                        <td>专业分析、夜间监控</td>
+                    </tr>
+                    <tr>
+                        <td>工业热力图</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>工业控制台</td>
+                        <td>紧凑矩阵扫描</td>
+                        <td>快速全局分析</td>
+                    </tr>
+                    <tr>
+                        <td>轻量交易仪表板</td>
+                        <td>⭐⭐⭐</td>
+                        <td>现代交易平台</td>
+                        <td>卡片交互+动画</td>
+                        <td>日常监控、操作执行</td>
+                    </tr>
+                    <tr>
+                        <td>市场仪表板增强版</td>
+                        <td>⭐⭐⭐⭐</td>
+                        <td>清爽简约</td>
+                        <td>渐进式披露</td>
+                        <td>功能深度分析</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <footer>
+            <p>© 2026 欧奈尔市场扫描项目 | 所有原型基于欧奈尔(CAN SLIM)投资体系设计</p>
+            <p style="margin-top: 10px; font-size: 0.8rem;">文件位置: D:/hanako/investment/web/visual_prototypes/</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大盘扫描 · 欧奈尔投资系统</title>
+    
+    <!-- Google字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- ECharts图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    
+    <!-- 统一设计系统 -->
+    <link rel="stylesheet" href="/static/css/dark_theme.css">
+    
+    <style>
+        /* 大盘扫描页面特定样式 */
+        .market-health-indicator {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+        
+        .health-gauge {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .health-score {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .health-score-value {
+            font-family: var(--font-mono);
+            font-size: var(--text-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+        
+        .health-score-label {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+        }
+        
+        .distribution-types {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        
+        .dist-type-card {
+            flex: 1;
+            padding: var(--space-md);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            transition: var(--transition-fast);
+        }
+        
+        .dist-type-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .dist-type-name {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .dist-type-count {
+            font-family: var(--font-mono);
+            font-size: var(--text-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+        
+        .signal-card {
+            border-left: 4px solid;
+            padding-left: var(--space-md);
+        }
+        
+        .signal-card.buy {
+            border-left-color: var(--data-positive);
+        }
+        
+        .signal-card.sell {
+            border-left-color: var(--signal-danger);
+        }
+        
+        .signal-card.neutral {
+            border-left-color: var(--text-tertiary);
+        }
+        
+        .signal-strength {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-weight-semibold);
+            margin-left: var(--space-sm);
+        }
+        
+        .signal-strength.low {
+            background: rgba(var(--signal-warning), 0.2);
+            color: var(--signal-warning);
+        }
+        
+        .signal-strength.medium {
+            background: rgba(var(--signal-info), 0.2);
+            color: var(--signal-info);
+        }
+        
+        .signal-strength.high {
+            background: rgba(var(--signal-danger), 0.2);
+            color: var(--signal-danger);
+        }
+        
+        .timeline-container {
+            position: relative;
+            height: 60px;
+            margin: var(--space-lg) 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: var(--data-positive);
+        }
+        
+        .timeline-label {
+            position: absolute;
+            top: -25px;
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            white-space: nowrap;
+        }
+        
+        .chart-container {
+            height: 400px;
+            margin: var(--space-lg) 0;
+        }
+        
+        .date-range-selector {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+        }
+        
+        .date-btn {
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-tertiary);
+            font-size: var(--text-xs);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .date-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+        }
+        
+        .date-btn.active {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(167, 139, 250, 0.1));
+            color: var(--data-positive);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="unified-nav">
+        <!-- 导航栏将由JavaScript注入 -->
+    </nav>
+    
+    <div class="app-container">
+        <!-- 主内容 -->
+        <main class="app-main container">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h1 class="page-title">大盘扫描</h1>
+                <div class="page-subtitle">
+                    基于欧奈尔市场指标分析市场健康度、抛盘日计数、追盘日信号，识别市场趋势转折点
+                </div>
+            </div>
+            
+            <!-- 日期选择器 -->
+            <div class="date-range-selector">
+                <div style="font-size: var(--text-sm); color: var(--text-secondary);">时间段:</div>
+                <button class="date-btn active" data-days="30">近30日</button>
+                <button class="date-btn" data-days="90">近90日</button>
+                <button class="date-btn" data-days="180">近半年</button>
+                <button class="date-btn" data-days="365">近一年</button>
+                
+                <div style="margin-left: auto; display: flex; gap: var(--space-sm); align-items: center;">
+                    <span style="font-size: var(--text-sm); color: var(--text-secondary);">数据截至:</span>
+                    <input type="date" id="endDate" class="input input-sm" style="width: 140px;">
+                    <button id="refreshBtn" class="btn btn-sm">刷新数据</button>
+                </div>
+            </div>
+            
+            <!-- 第一行：关键指标 -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span>📊</span>
+                    市场关键指标
+                </h2>
+                
+                <div class="grid-cards grid-cards-4">
+                    <!-- 市场健康度 -->
+                    <div class="card">
+                        <div class="stat-title">市场健康度</div>
+                        <div class="market-health-indicator">
+                            <div id="healthGauge" class="health-gauge"></div>
+                            <div class="health-score">
+                                <div id="healthScore" class="health-score-value">--</div>
+                                <div class="health-score-label">/100</div>
+                            </div>
+                        </div>
+                        <div class="stat-subtitle" id="healthTrend">较昨日 --</div>
+                    </div>
+                    
+                    <!-- 抛盘日计数 -->
+                    <div class="card">
+                        <div class="stat-title">25日抛盘日计数</div>
+                        <div class="stat-value" id="distributionCount">--</div>
+                        <div class="stat-subtitle">
+                            <span id="distributionTrend" style="color: var(--text-tertiary);">阈值: ≥3警告, ≥5危险</span>
+                        </div>
+                        <div class="distribution-types">
+                            <div class="dist-type-card">
+                                <div class="dist-type-name">标准</div>
+                                <div class="dist-type-count" id="distStandard">--</div>
+                            </div>
+                            <div class="dist-type-card">
+                                <div class="dist-type-name">假阳线</div>
+                                <div class="dist-type-count" id="distFakeYang">--</div>
+                            </div>
+                            <div class="dist-type-card">
+                                <div class="dist-type-name">日内反转</div>
+                                <div class="dist-type-count" id="distReversal">--</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 吸筹日计数 -->
+                    <div class="card">
+                        <div class="stat-title">25日吸筹日计数</div>
+                        <div class="stat-value" id="accumulationCount">--</div>
+                        <div class="stat-subtitle" id="accumulationTrend">较前日 --</div>
+                        <div style="margin-top: var(--space-md);">
+                            <div style="font-size: var(--text-xs); color: var(--text-tertiary);">累计吸筹日:</div>
+                            <div style="font-family: var(--font-mono); font-size: var(--text-lg); color: var(--data-positive);" id="totalAccumulation">--</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 追盘日状态 -->
+                    <div class="card">
+                        <div class="stat-title">追盘日状态</div>
+                        <div class="stat-value" id="followThroughStatus">--</div>
+                        <div class="stat-subtitle" id="lastFollowThrough">最近一次: --</div>
+                        <div style="margin-top: var(--space-md);">
+                            <div style="font-size: var(--text-xs); color: var(--text-tertiary);">低点后天数:</div>
+                            <div style="font-family: var(--font-mono); font-size: var(--text-lg);" id="daysSinceLow">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 第二行：市场信号和图表 -->
+            <div class="section">
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--space-xl);">
+                    <!-- 左侧：市场信号 -->
+                    <div>
+                        <h2 class="section-title">
+                            <span>🚦</span>
+                            市场信号
+                        </h2>
+                        
+                        <div id="signalContainer">
+                            <!-- 信号卡片将通过JavaScript动态生成 -->
+                            <div class="signal-card neutral">
+                                <div style="display: flex; align-items: center; margin-bottom: var(--space-xs);">
+                                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">中性</div>
+                                    <div class="signal-strength low">低强度</div>
+                                </div>
+                                <div style="font-size: var(--text-sm); color: var(--text-secondary);">
+                                    市场处于正常状态，无明显买卖信号
+                                </div>
+                                <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                                    建议: 持有现有仓位，等待明确信号
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 信号历史 -->
+                        <div style="margin-top: var(--space-xl);">
+                            <h3 style="font-size: var(--text-lg); font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-md);">
+                                近期信号历史
+                            </h3>
+                            <div id="signalHistory" style="max-height: 300px; overflow-y: auto;">
+                                <!-- 信号历史将通过JavaScript动态生成 -->
+                                <div style="padding: var(--space-sm); border-bottom: 1px solid var(--border-light);">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                                        <span style="font-size: var(--text-sm); color: var(--text-secondary);">2024-03-15</span>
+                                        <span style="font-size: var(--text-xs); color: var(--text-tertiary);">中性</span>
+                                    </div>
+                                    <div style="font-size: var(--text-xs); color: var(--text-tertiary);">
+                                        抛盘日计数: 2，市场健康度: 68
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：健康度趋势图 -->
+                    <div>
+                        <h2 class="section-title">
+                            <span>📈</span>
+                            市场健康度趋势
+                        </h2>
+                        
+                        <div class="chart-container" id="healthChart"></div>
+                        
+                        <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg);">
+                            <div style="flex: 1;">
+                                <div style="font-size: var(--text-xs); color: var(--text-tertiary);">健康度等级</div>
+                                <div style="font-family: var(--font-mono); font-size: var(--text-lg); color: var(--text-primary);" id="healthGrade">--</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-size: var(--text-xs); color: var(--text-tertiary);">趋势方向</div>
+                                <div style="font-family: var(--font-mono); font-size: var(--text-lg);" id="healthDirection">--</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-size: var(--text-xs); color: var(--text-tertiary);">变化速度</div>
+                                <div style="font-family: var(--font-mono); font-size: var(--text-lg);" id="healthVelocity">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 第三行：详细数据 -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span>📋</span>
+                    详细市场日数据
+                </h2>
+                
+                <div class="tab-bar" style="margin-bottom: var(--space-lg);">
+                    <div class="tab active" data-type="all">全部</div>
+                    <div class="tab" data-type="distribution">抛盘日</div>
+                    <div class="tab" data-type="accumulation">吸筹日</div>
+                    <div class="tab" data-type="followthrough">追盘日</div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="table" id="marketDaysTable">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>指数</th>
+                                <th>涨跌幅</th>
+                                <th>成交量比</th>
+                                <th>类型</th>
+                                <th>收盘位置</th>
+                                <th>上影线比</th>
+                                <th>市场健康度</th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketDaysBody">
+                            <!-- 数据将通过JavaScript动态填充 -->
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: var(--space-xl); color: var(--text-tertiary);">
+                                    加载数据中...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-lg);">
+                    <div style="font-size: var(--text-sm); color: var(--text-tertiary);">
+                        显示 <span id="visibleCount">0</span> / <span id="totalCount">0</span> 个交易日
+                    </div>
+                    <div style="display: flex; gap: var(--space-sm);">
+                        <button id="prevPage" class="btn btn-sm" disabled>上一页</button>
+                        <button id="nextPage" class="btn btn-sm" disabled>下一页</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 第四行：指数对比 -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span>⚖️</span>
+                    主要指数对比
+                </h2>
+                
+                <div class="grid-cards grid-cards-4">
+                    <div class="card">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <div style="width: 12px; height: 12px; background: var(--data-positive); border-radius: 2px;"></div>
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">中证全指</div>
+                        </div>
+                        <div style="font-family: var(--font-mono); font-size: var(--text-2xl); color: var(--text-primary);" id="index985">--</div>
+                        <div style="font-size: var(--text-sm); color: var(--text-tertiary);">000985</div>
+                    </div>
+                    
+                    <div class="card">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <div style="width: 12px; height: 12px; background: var(--data-up); border-radius: 2px;"></div>
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">沪深300</div>
+                        </div>
+                        <div style="font-family: var(--font-mono); font-size: var(--text-2xl); color: var(--text-primary);" id="index300">--</div>
+                        <div style="font-size: var(--text-sm); color: var(--text-tertiary);">000300</div>
+                    </div>
+                    
+                    <div class="card">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <div style="width: 12px; height: 12px; background: var(--data-excellent); border-radius: 2px;"></div>
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">创业板指</div>
+                        </div>
+                        <div style="font-family: var(--font-mono); font-size: var(--text-2xl); color: var(--text-primary);" id="index399006">--</div>
+                        <div style="font-size: var(--text-sm); color: var(--text-tertiary);">399006</div>
+                    </div>
+                    
+                    <div class="card">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <div style="width: 12px; height: 12px; background: var(--signal-highlight); border-radius: 2px;"></div>
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">科创50</div>
+                        </div>
+                        <div style="font-family: var(--font-mono); font-size: var(--text-2xl); color: var(--text-primary);" id="index000688">--</div>
+                        <div style="font-size: var(--text-sm); color: var(--text-tertiary);">000688</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container" id="indexComparisonChart" style="height: 300px; margin-top: var(--space-xl);"></div>
+            </div>
+        </main>
+        
+        <!-- 页脚 -->
+        <footer style="padding: var(--space-xl) 0; border-top: 1px solid var(--border-light); margin-top: var(--space-3xl);">
+            <div class="container" style="text-align: center;">
+                <div style="font-size: var(--text-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">
+                    欧奈尔投资系统 · 基于威廉·欧奈尔投资理念
+                </div>
+                <div style="font-size: var(--text-xs); color: var(--text-muted);">
+                    数据来源：理杏仁API · 数据更新：每日收盘后 · 本页面数据仅供参考，不构成投资建议
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- 统一导航脚本 -->
+    <script src="/static/js/nav.js"></script>
+    
+    <!-- 大盘扫描页面JavaScript -->
+    <script>
+        // 页面状态
+        const state = {
+            currentDays: 30,
+            currentPage: 1,
+            pageSize: 50,
+            marketData: null,
+            healthData: null,
+            signals: null,
+            indicesData: null
+        };
+        
+        // DOM元素
+        const elements = {
+            healthScore: document.getElementById('healthScore'),
+            healthTrend: document.getElementById('healthTrend'),
+            distributionCount: document.getElementById('distributionCount'),
+            distStandard: document.getElementById('distStandard'),
+            distFakeYang: document.getElementById('distFakeYang'),
+            distReversal: document.getElementById('distReversal'),
+            accumulationCount: document.getElementById('accumulationCount'),
+            accumulationTrend: document.getElementById('accumulationTrend'),
+            totalAccumulation: document.getElementById('totalAccumulation'),
+            followThroughStatus: document.getElementById('followThroughStatus'),
+            lastFollowThrough: document.getElementById('lastFollowThrough'),
+            daysSinceLow: document.getElementById('daysSinceLow'),
+            signalContainer: document.getElementById('signalContainer'),
+            signalHistory: document.getElementById('signalHistory'),
+            healthChart: document.getElementById('healthChart'),
+            healthGrade: document.getElementById('healthGrade'),
+            healthDirection: document.getElementById('healthDirection'),
+            healthVelocity: document.getElementById('healthVelocity'),
+            marketDaysBody: document.getElementById('marketDaysBody'),
+            visibleCount: document.getElementById('visibleCount'),
+            totalCount: document.getElementById('totalCount'),
+            prevPage: document.getElementById('prevPage'),
+            nextPage: document.getElementById('nextPage'),
+            index985: document.getElementById('index985'),
+            index300: document.getElementById('index300'),
+            index399006: document.getElementById('index399006'),
+            index000688: document.getElementById('index000688'),
+            indexComparisonChart: document.getElementById('indexComparisonChart'),
+            healthGauge: document.getElementById('healthGauge'),
+            endDate: document.getElementById('endDate'),
+            refreshBtn: document.getElementById('refreshBtn')
+        };
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            initPage();
+            bindEvents();
+            loadData();
+        });
+        
+        function initPage() {
+            // 设置默认结束日期为今天
+            const today = new Date();
+            elements.endDate.value = today.toISOString().split('T')[0];
+            
+            // 初始化健康度仪表盘
+            initHealthGauge();
+            
+            // 初始化图表
+            initCharts();
+        }
+        
+        function bindEvents() {
+            // 日期按钮
+            document.querySelectorAll('.date-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    state.currentDays = parseInt(this.dataset.days);
+                    loadData();
+                });
+            });
+            
+            // 标签页
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    filterTable(this.dataset.type);
+                });
+            });
+            
+            // 分页按钮
+            elements.prevPage.addEventListener('click', () => {
+                if (state.currentPage > 1) {
+                    state.currentPage--;
+                    updateTable();
+                }
+            });
+            
+            elements.nextPage.addEventListener('click', () => {
+                if (state.marketData && state.currentPage * state.pageSize < state.marketData.length) {
+                    state.currentPage++;
+                    updateTable();
+                }
+            });
+            
+            // 刷新按钮
+            elements.refreshBtn.addEventListener('click', loadData);
+        }
+        
+        function initHealthGauge() {
+            if (!window.echarts) return;
+            
+            const chart = echarts.init(elements.healthGauge);
+            
+            const option = {
+                series: [
+                    {
+                        type: 'gauge',
+                        center: ['50%', '60%'],
+                        radius: '90%',
+                        startAngle: 180,
+                        endAngle: 0,
+                        min: 0,
+                        max: 100,
+                        splitNumber: 5,
+                        axisLine: {
+                            lineStyle: {
+                                width: 6,
+                                color: [
+                                    [0.3, {color: '#ef4444', width: 6}],
+                                    [0.6, {color: '#fbbf24', width: 6}],
+                                    [1, {color: '#10b981', width: 6}]
+                                ]
+                            }
+                        },
+                        axisTick: {
+                            length: 8,
+                            lineStyle: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        splitLine: {
+                            length: 12,
+                            lineStyle: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        axisLabel: {
+                            distance: 18,
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            fontSize: 10
+                        },
+                        pointer: {
+                            icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+                            length: '70%',
+                            width: 8,
+                            offsetCenter: [0, '-20%'],
+                            itemStyle: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        detail: {
+                            show: false
+                        },
+                        data: [{value: 50, name: ''}]
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+            window.healthGaugeChart = chart;
+        }
+        
+        function initCharts() {
+            // 初始化健康度趋势图
+            if (window.echarts && elements.healthChart) {
+                window.healthTrendChart = echarts.init(elements.healthChart);
+            }
+            
+            // 初始化指数对比图
+            if (window.echarts && elements.indexComparisonChart) {
+                window.indexComparisonChart = echarts.init(elements.indexComparisonChart);
+            }
+        }
+        
+        function loadData() {
+            showLoading();
+            
+            // 模拟数据加载（实际应该调用API）
+            setTimeout(() => {
+                loadMockData();
+                updateUI();
+                hideLoading();
+            }, 1000);
+        }
+        
+        function loadMockData() {
+            // 模拟市场数据
+            const today = new Date();
+            const marketDays = [];
+            
+            for (let i = state.currentDays; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                
+                const changePct = (Math.random() - 0.5) * 0.04; // -2%到+2%
+                const volumeRatio = 0.8 + Math.random() * 0.6; // 0.8-1.4
+                
+                // 随机生成抛盘日/吸筹日
+                let isDistribution = false;
+                let distributionType = null;
+                let isAccumulation = false;
+                
+                if (Math.random() < 0.1) { // 10%概率抛盘日
+                    isDistribution = true;
+                    const types = ['standard', 'fake_yang', 'intraday_reversal'];
+                    distributionType = types[Math.floor(Math.random() * types.length)];
+                } else if (Math.random() < 0.08) { // 8%概率吸筹日
+                    isAccumulation = true;
+                }
+                
+                marketDays.push({
+                    date: date.toISOString().split('T')[0],
+                    index_code: '000985',
+                    change_pct: changePct,
+                    volume_ratio: volumeRatio,
+                    is_distribution_day: isDistribution,
+                    is_accumulation_day: isAccumulation,
+                    distribution_type: distributionType,
+                    close_position: 0.3 + Math.random() * 0.4,
+                    upper_shadow_ratio: Math.random() * 2,
+                    health_score: 50 + Math.random() * 40
+                });
+            }
+            
+            state.marketData = marketDays;
+            
+            // 模拟健康度数据
+            state.healthData = marketDays.map((d, i) => ({
+                date: d.date,
+                health_score: d.health_score,
+                distribution_count: Math.floor(Math.random() * 6),
+                accumulation_count: Math.floor(Math.random() * 4)
+            }));
+            
+            // 模拟信号
+            state.signals = [
+                {
+                    date: marketDays[marketDays.length - 1].date,
+                    signal: 'neutral',
+                    strength: 1,
+                    recommendation: '市场处于正常状态，无明显买卖信号',
+                    distribution_count: 2,
+                    health_score: 68
+                }
+            ];
+            
+            // 模拟指数数据
+            state.indicesData = {
+                '000985': { price: 4856.78, change: 0.012 },
+                '000300': { price: 3524.12, change: 0.008 },
+                '399006': { price: 1987.45, change: -0.005 },
+                '000688': { price: 876.32, change: 0.015 }
+            };
+        }
+        
+        function updateUI() {
+            if (!state.marketData || !state.healthData) return;
+            
+            updateHealthGauge();
+            updateStatistics();
+            updateSignals();
+            updateCharts();
+            updateTable();
+            updateIndices();
+        }
+        
+        function updateHealthGauge() {
+            if (!window.healthGaugeChart || !state.healthData.length) return;
+            
+            const latestHealth = state.healthData[state.healthData.length - 1].health_score;
+            elements.healthScore.textContent = Math.round(latestHealth);
+            
+            // 更新仪表盘指针
+            window.healthGaugeChart.setOption({
+                series: [{
+                    data: [{value: latestHealth}]
+                }]
+            });
+            
+            // 更新趋势
+            if (state.healthData.length > 1) {
+                const prevHealth = state.healthData[state.healthData.length - 2].health_score;
+                const diff = latestHealth - prevHealth;
+                const trendText = diff > 0 ? `↑ ${diff.toFixed(1)}` : diff < 0 ? `↓ ${Math.abs(diff).toFixed(1)}` : `→ 持平`;
+                const trendColor = diff > 0 ? 'var(--data-positive)' : diff < 0 ? 'var(--signal-danger)' : 'var(--text-tertiary)';
+                elements.healthTrend.innerHTML = `较昨日 <span style="color: ${trendColor}">${trendText}</span>`;
+            }
+            
+            // 更新健康度等级
+            let grade = 'C', gradeColor = 'var(--text-tertiary)';
+            if (latestHealth >= 80) {
+                grade = 'A'; gradeColor = 'var(--signal-safe)';
+            } else if (latestHealth >= 70) {
+                grade = 'B'; gradeColor = 'var(--data-positive)';
+            } else if (latestHealth >= 60) {
+                grade = 'C'; gradeColor = 'var(--signal-warning)';
+            } else if (latestHealth >= 50) {
+                grade = 'D'; gradeColor = 'var(--data-warning)';
+            } else {
+                grade = 'F'; gradeColor = 'var(--signal-danger)';
+            }
+            
+            elements.healthGrade.textContent = grade;
+            elements.healthGrade.style.color = gradeColor;
+            
+            // 趋势方向
+            if (state.healthData.length >= 5) {
+                const recent = state.healthData.slice(-5).map(d => d.health_score);
+                const trend = recent[4] - recent[0];
+                let direction = '平稳', directionColor = 'var(--text-tertiary)';
+                if (trend > 3) {
+                    direction = '上升'; directionColor = 'var(--data-positive)';
+                } else if (trend < -3) {
+                    direction = '下降'; directionColor = 'var(--signal-danger)';
+                }
+                
+                elements.healthDirection.textContent = direction;
+                elements.healthDirection.style.color = directionColor;
+                
+                // 变化速度
+                const velocity = Math.abs(trend) / 5;
+                elements.healthVelocity.textContent = velocity > 0.5 ? '快速' : velocity > 0.2 ? '中速' : '缓慢';
+            }
+        }
+        
+        function updateStatistics() {
+            if (!state.marketData) return;
+            
+            // 计算抛盘日统计
+            const recentDays = state.marketData.slice(-25);
+            const distDays = recentDays.filter(d => d.is_distribution_day);
+            
+            elements.distributionCount.textContent = distDays.length;
+            elements.distStandard.textContent = distDays.filter(d => d.distribution_type === 'standard').length;
+            elements.distFakeYang.textContent = distDays.filter(d => d.distribution_type === 'fake_yang').length;
+            elements.distReversal.textContent = distDays.filter(d => d.distribution_type === 'intraday_reversal').length;
+            
+            // 吸筹日统计
+            const accumDays = recentDays.filter(d => d.is_accumulation_day);
+            elements.accumulationCount.textContent = accumDays.length;
+            elements.totalAccumulation.textContent = state.marketData.filter(d => d.is_accumulation_day).length;
+            
+            // 追盘日状态（模拟）
+            const hasFollowThrough = Math.random() < 0.2;
+            if (hasFollowThrough) {
+                elements.followThroughStatus.textContent = '已出现';
+                elements.followThroughStatus.style.color = 'var(--data-positive)';
+                elements.lastFollowThrough.textContent = `最近一次: ${state.marketData[state.marketData.length - 3].date}`;
+                elements.daysSinceLow.textContent = '4';
+            } else {
+                elements.followThroughStatus.textContent = '未出现';
+                elements.followThroughStatus.style.color = 'var(--text-tertiary)';
+                elements.lastFollowThrough.textContent = '最近一次: 无';
+                elements.daysSinceLow.textContent = '--';
+            }
+        }
+        
+        function updateSignals() {
+            if (!state.signals || !state.signals.length) return;
+            
+            const latestSignal = state.signals[0];
+            
+            // 更新主信号卡片
+            let signalClass = 'neutral';
+            let signalStrengthClass = 'low';
+            let signalColor = 'var(--text-tertiary)';
+            
+            if (latestSignal.signal === 'buy') {
+                signalClass = 'buy';
+                signalColor = 'var(--data-positive)';
+            } else if (latestSignal.signal === 'sell') {
+                signalClass = 'sell';
+                signalColor = 'var(--signal-danger)';
+            }
+            
+            if (latestSignal.strength >= 8) signalStrengthClass = 'high';
+            else if (latestSignal.strength >= 4) signalStrengthClass = 'medium';
+            
+            elements.signalContainer.innerHTML = `
+                <div class="signal-card ${signalClass}">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--space-xs);">
+                        <div style="font-weight: var(--font-weight-semibold); color: ${signalColor};">${getSignalText(latestSignal.signal)}</div>
+                        <div class="signal-strength ${signalStrengthClass}">${getStrengthText(latestSignal.strength)}</div>
+                    </div>
+                    <div style="font-size: var(--text-sm); color: var(--text-secondary);">
+                        ${latestSignal.recommendation}
+                    </div>
+                    <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                        抛盘日计数: ${latestSignal.distribution_count} · 健康度: ${latestSignal.health_score}
+                    </div>
+                </div>
+            `;
+            
+            // 更新信号历史
+            elements.signalHistory.innerHTML = state.signals.map(signal => `
+                <div style="padding: var(--space-sm); border-bottom: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span style="font-size: var(--text-sm); color: var(--text-secondary);">${signal.date}</span>
+                        <span style="font-size: var(--text-xs); color: ${getSignalColor(signal.signal)};">${getSignalText(signal.signal)}</span>
+                    </div>
+                    <div style="font-size: var(--text-xs); color: var(--text-tertiary);">
+                        抛盘日计数: ${signal.distribution_count} · 市场健康度: ${signal.health_score}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateCharts() {
+            if (!window.healthTrendChart || !state.healthData) return;
+            
+            // 健康度趋势图
+            const dates = state.healthData.map(d => d.date);
+            const scores = state.healthData.map(d => d.health_score);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    borderColor: 'var(--border-glow)',
+                    textStyle: {
+                        color: 'var(--text-secondary)',
+                        fontFamily: 'var(--font-body)'
+                    }
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    axisLine: {
+                        lineStyle: {
+                            color: 'var(--border-light)'
+                        }
+                    },
+                    axisLabel: {
+                        color: 'var(--text-tertiary)'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 0,
+                    max: 100,
+                    axisLine: {
+                        lineStyle: {
+                            color: 'var(--border-light)'
+                        }
+                    },
+                    axisLabel: {
+                        color: 'var(--text-tertiary)',
+                        formatter: '{value}'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'var(--border-light)',
+                            opacity: 0.3
+                        }
+                    }
+                },
+                series: [
+                    {
+                        type: 'line',
+                        data: scores,
+                        smooth: true,
+                        lineStyle: {
+                            width: 3,
+                            color: 'var(--data-positive)'
+                        },
+                        itemStyle: {
+                            color: 'var(--data-positive)'
+                        },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(96, 165, 250, 0.4)' },
+                                { offset: 1, color: 'rgba(96, 165, 250, 0.05)' }
+                            ])
+                        }
+                    }
+                ]
+            };
+            
+            window.healthTrendChart.setOption(option);
+            
+            // 指数对比图
+            if (window.indexComparisonChart && state.indicesData) {
+                const indicesOption = {
+                    backgroundColor: 'transparent',
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: '{b}: {c}'
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: ['中证全指', '沪深300', '创业板指', '科创50'],
+                        axisLine: {
+                            lineStyle: {
+                                color: 'var(--border-light)'
+                            }
+                        },
+                        axisLabel: {
+                            color: 'var(--text-tertiary)'
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLine: {
+                            lineStyle: {
+                                color: 'var(--border-light)'
+                            }
+                        },
+                        axisLabel: {
+                            color: 'var(--text-tertiary)'
+                        },
+                        splitLine: {
+                            lineStyle: {
+                                color: 'var(--border-light)',
+                                opacity: 0.3
+                            }
+                        }
+                    },
+                    series: [
+                        {
+                            type: 'bar',
+                            data: [
+                                {
+                                    value: state.indicesData['000985'].price,
+                                    itemStyle: {
+                                        color: 'var(--data-positive)'
+                                    }
+                                },
+                                {
+                                    value: state.indicesData['000300'].price,
+                                    itemStyle: {
+                                        color: 'var(--data-up)'
+                                    }
+                                },
+                                {
+                                    value: state.indicesData['399006'].price,
+                                    itemStyle: {
+                                        color: 'var(--data-excellent)'
+                                    }
+                                },
+                                {
+                                    value: state.indicesData['000688'].price,
+                                    itemStyle: {
+                                        color: 'var(--signal-highlight)'
+                                    }
+                                }
+                            ],
+                            label: {
+                                show: true,
+                                position: 'top',
+                                color: 'var(--text-primary)',
+                                formatter: '{c}'
+                            }
+                        }
+                    ]
+                };
+                
+                window.indexComparisonChart.setOption(indicesOption);
+            }
+        }
+        
+        function updateTable() {
+            if (!state.marketData) return;
+            
+            const filteredData = filterDataByType('all');
+            const total = filteredData.length;
+            const start = (state.currentPage - 1) * state.pageSize;
+            const end = Math.min(start + state.pageSize, total);
+            const pageData = filteredData.slice(start, end);
+            
+            // 更新表格内容
+            elements.marketDaysBody.innerHTML = pageData.map(day => `
+                <tr>
+                    <td>${day.date}</td>
+                    <td>${day.index_code}</td>
+                    <td style="color: ${day.change_pct >= 0 ? 'var(--data-up)' : 'var(--data-down)'}; font-family: var(--font-mono);">
+                        ${(day.change_pct * 100).toFixed(2)}%
+                    </td>
+                    <td style="font-family: var(--font-mono);">${day.volume_ratio.toFixed(2)}x</td>
+                    <td>
+                        ${getDayTypeBadge(day)}
+                    </td>
+                    <td style="font-family: var(--font-mono);">${(day.close_position * 100).toFixed(0)}%</td>
+                    <td style="font-family: var(--font-mono);">${day.upper_shadow_ratio.toFixed(1)}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: var(--space-xs);">
+                            <div style="width: 40px; height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden;">
+                                <div style="width: ${day.health_score}%; height: 100%; background: var(--data-positive);"></div>
+                            </div>
+                            <span style="font-size: var(--text-xs); font-family: var(--font-mono);">${Math.round(day.health_score)}</span>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // 更新分页信息
+            elements.visibleCount.textContent = `${start + 1}-${end}`;
+            elements.totalCount.textContent = total;
+            elements.prevPage.disabled = state.currentPage <= 1;
+            elements.nextPage.disabled = end >= total;
+        }
+        
+        function updateIndices() {
+            if (!state.indicesData) return;
+            
+            elements.index985.textContent = state.indicesData['000985'].price.toFixed(2);
+            elements.index300.textContent = state.indicesData['000300'].price.toFixed(2);
+            elements.index399006.textContent = state.indicesData['399006'].price.toFixed(2);
+            elements.index000688.textContent = state.indicesData['000688'].price.toFixed(2);
+        }
+        
+        function filterDataByType(type) {
+            if (!state.marketData) return [];
+            
+            if (type === 'all') return state.marketData;
+            if (type === 'distribution') return state.marketData.filter(d => d.is_distribution_day);
+            if (type === 'accumulation') return state.marketData.filter(d => d.is_accumulation_day);
+            if (type === 'followthrough') return []; // 模拟数据中没有追盘日
+            
+            return state.marketData;
+        }
+        
+        function filterTable(type) {
+            state.currentPage = 1;
+            updateTable();
+        }
+        
+        // 工具函数
+        function getSignalText(signal) {
+            switch(signal) {
+                case 'buy': return '买入信号';
+                case 'sell': return '卖出信号';
+                case 'neutral': return '中性';
+                default: return '未知';
+            }
+        }
+        
+        function getSignalColor(signal) {
+            switch(signal) {
+                case 'buy': return 'var(--data-positive)';
+                case 'sell': return 'var(--signal-danger)';
+                case 'neutral': return 'var(--text-tertiary)';
+                default: return 'var(--text-tertiary)';
+            }
+        }
+        
+        function getStrengthText(strength) {
+            if (strength >= 8) return '高强度';
+            if (strength >= 4) return '中强度';
+            return '低强度';
+        }
+        
+        function getDayTypeBadge(day) {
+            if (day.is_distribution_day) {
+                let typeText = '标准';
+                let color = 'var(--signal-danger)';
+                
+                if (day.distribution_type === 'fake_yang') {
+                    typeText = '假阳线';
+                    color = 'var(--data-warning)';
+                } else if (day.distribution_type === 'intraday_reversal') {
+                    typeText = '日内反转';
+                    color = 'var(--signal-info)';
+                }
+                
+                return `<span style="font-size: var(--text-xs); padding: 2px 6px; border-radius: var(--radius-full); background: ${color}20; color: ${color}; border: 1px solid ${color}40;">抛盘日:${typeText}</span>`;
+            }
+            
+            if (day.is_accumulation_day) {
+                return `<span style="font-size: var(--text-xs); padding: 2px 6px; border-radius: var(--radius-full); background: var(--data-positive)20; color: var(--data-positive); border: 1px solid var(--data-positive)40;">吸筹日</span>`;
+            }
+            
+            return `<span style="font-size: var(--text-xs); color: var(--text-tertiary);">-</span>`;
+        }
+        
+        function showLoading() {
+            // 可以添加加载动画
+            document.body.style.opacity = '0.7';
+            document.body.style.pointerEvents = 'none';
+        }
+        
+        function hideLoading() {
+            document.body.style.opacity = '1';
+            document.body.style.pointerEvents = 'auto';
+        }
+    </script>
+</body>
+</html>

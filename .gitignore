@@ -1,0 +1,170 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*,cover
+
+# Project specific
+data/database/*.db
+data/database/*.sqlite
+data/database/*.sqlite3
+logs/
+*.log
+server*.log
+nohup.out
+output/
+results/
+tmp/
+temp/
+*.tmp
+*.temp
+.cache
+
+# Environment
+.env
+.env.local
+.env.*.local
+venv/
+env/
+ENV/
+.envrc
+pip-wheel-metadata/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# OS
+ehthumbs.db
+[Tt]humbs.db
+*.stackdump
+.fseventsd
+.Spotlight-V100
+.Trashes
+
+# Virtual environments
+venv/
+ENV/
+env/
+pythonenv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+*.iws
+*.iml
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history
+
+# Windows
+[Dd]esktop.ini
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backtest results
+backtest_results/
+*.csv
+*.xlsx
+*.xls
+
+# Data exports
+data/exports/
+data/processed/
+data/raw/
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# Documentation
+docs/_build/
+docs/.doctrees/
+
+# Test outputs
+test-results/
+test_output/
+*.pytest_cache/
+
+# PyInstaller
+*.spec
+
+# IPython
+profile_default/
+ipython_config.py
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Rope
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# Virtual environment
+.venv
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User-specific files
+*~
+
+# Project-specific exclusions
+investment_*.md
+create_*.py
+check_*.py
+test_*.py
+回测结果*.md
+项目卡片.txt
+列出抛盘日详情.py
+nul

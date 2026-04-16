@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投资组合 · 暗夜热力图</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- Google字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- ECharts图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    
+    <!-- 统一暗色主题CSS -->
+    <link rel="stylesheet" href="../static/dark_theme.css">
+    <link rel="stylesheet" href="../static/dark_nav.css">
+    
+    <style>
+        /* ====== 投资组合页面特定样式 ====== */
+        
+        /* 摘要卡片行 */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+        
+        @media (max-width: 1200px) {
+            .summary-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .summary-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .sum-card {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            transition: var(--transition-base);
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .sum-card:hover {
+            box-shadow: var(--shadow-elevated);
+            border-color: var(--border-glow);
+            transform: translateY(-4px);
+        }
+        
+        .sum-card.highlight {
+            border-left: 3px solid var(--data-positive);
+        }
+        
+        .sum-card.profit {
+            border-left: 3px solid var(--data-up);
+        }
+        
+        .sum-card.loss {
+            border-left: 3px solid var(--data-down);
+        }
+        
+        .sum-label {
+            font-size: var(--text-xs);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-xs);
+        }
+        
+        .sum-val {
+            font-family: var(--font-mono);
+            font-size: var(--text-4xl);
+            font-weight: var(--font-weight-black);
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            line-height: 1;
+            margin: var(--space-xs) 0;
+        }
+        
+        .sum-sub {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            margin-top: var(--space-xs);
+        }
+        
+        /* 主网格布局 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: var(--space-lg);
+            flex: 1;
+            min-height: 0;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 左侧列 */
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+        
+        /* 右侧列 */
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            min-width: 0;
+        }
+        
+        /* 面板基础样式 */
+        .panel {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition-base);
+        }
+        
+        .panel:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .panel-header {
+            padding: var(--space-md) var(--space-lg);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .panel-title {
+            font-size: var(--text-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+        
+        .panel-badge {
+            font-size: var(--text-xs);
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .panel-badge.red {
+            background: rgba(var(--signal-danger), 0.2);
+            color: var(--signal-danger);
+            border: 1px solid rgba(var(--signal-danger), 0.3);
+        }
+        
+        .panel-badge.amber {
+            background: rgba(var(--signal-warning), 0.2);
+            color: var(--signal-warning);
+            border: 1px solid rgba(var(--signal-warning), 0.3);
+        }
+        
+        .panel-badge.green {
+            background: rgba(var(--signal-safe), 0.2);
+            color: var(--signal-safe);
+            border: 1px solid rgba(var(--signal-safe), 0.3);
+        }
+        
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-md);
+        }
+        
+        /* 股票行 */
+        .stock-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-sm);
+            border-bottom: 1px solid var(--border-light);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .stock-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .stock-row.selected {
+            background: rgba(96, 165, 250, 0.15);
+        }
+        
+        .st-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--text-sm);
+            font-weight: var(--font-weight-bold);
+            flex-shrink: 0;
+        }
+        
+        .st-avatar.up {
+            background: rgba(var(--data-up), 0.2);
+            color: var(--data-up);
+        }
+        
+        .st-avatar.dn {
+            background: rgba(var(--data-down), 0.2);
+            color: var(--data-down);
+        }
+        
+        .st-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .st-name {
+            font-weight: var(--font-weight-semibold);
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .st-code {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+        }
+        
+        .st-right {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        
+        .st-price {
+            font-size: var(--text-sm);
+            font-weight: var(--font-weight-bold);
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+        
+        .st-pnl {
+            font-size: var(--text-xs);
+            font-weight: var(--font-weight-semibold);
+            font-family: var(--font-mono);
+        }
+        
+        .st-pnl.up {
+            color: var(--data-up);
+        }
+        
+        .st-pnl.dn {
+            color: var(--data-down);
+        }
+        
+        /* 分配条 */
+        .alloc-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: var(--space-xs);
+            overflow: hidden;
+        }
+        
+        .alloc-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width var(--transition-slow);
+        }
+        
+        /* 图表面板 */
+        .chart-panel {
+            flex: 1;
+            min-height: 300px;
+        }
+        
+        #portfolioChart {
+            width: 100%;
+            height: 280px;
+        }
+        
+        /* 信号芯片 */
+        .sig-summary {
+            display: flex;
+            gap: var(--space-xs);
+            flex-wrap: wrap;
+            padding: var(--space-xs) 0;
+        }
+        
+        .sig-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .sig-chip.strong {
+            background: rgba(var(--signal-danger), 0.2);
+            color: var(--signal-danger);
+            border: 1px solid rgba(var(--signal-danger), 0.3);
+        }
+        
+        .sig-chip.moderate {
+            background: rgba(var(--signal-warning), 0.2);
+            color: var(--signal-warning);
+            border: 1px solid rgba(var(--signal-warning), 0.3);
+        }
+        
+        .sig-chip.normal {
+            background: rgba(var(--signal-safe), 0.2);
+            color: var(--signal-safe);
+            border: 1px solid rgba(var(--signal-safe), 0.3);
+        }
+        
+        /* 操作栏 */
+        .action-bar {
+            padding: var(--space-md);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            gap: var(--space-sm);
+            flex-shrink: 0;
+        }
+        
+        .abtn {
+            padding: var(--space-sm) var(--space-lg);
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.05);
+            font-size: var(--text-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+        
+        .abtn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-glow);
+            color: var(--text-primary);
+        }
+        
+        .abtn.primary {
+            background: linear-gradient(135deg, var(--data-positive), var(--signal-highlight));
+            color: var(--text-inverse);
+            border: none;
+        }
+        
+        .abtn.primary:hover {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .abtn.danger {
+            background: linear-gradient(135deg, var(--signal-danger), #ef4444);
+            color: white;
+            border: none;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: var(--text-tertiary);
+            font-size: var(--text-lg);
+            flex-direction: column;
+            gap: var(--space-md);
+            padding: var(--space-4xl) var(--space-lg);
+            text-align: center;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            opacity: 0.3;
+        }
+        
+        /* 模态框 */
+        .modal-bg {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-base);
+        }
+        
+        .modal-bg.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .modal {
+            background: var(--surface-secondary);
+            border: var(--glass-border);
+            backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-xl);
+            width: 500px;
+            max-width: 92vw;
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-elevated);
+        }
+        
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: var(--text-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-lg);
+        }
+        
+        /* 表格样式 */
+        .holdings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--text-sm);
+        }
+        
+        .holdings-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-tertiary);
+            padding: var(--space-sm) var(--space-md);
+            text-align: left;
+            font-weight: var(--font-weight-semibold);
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            border-bottom: 1px solid var(--border-medium);
+        }
+        
+        .holdings-table td {
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-secondary);
+        }
+        
+        .holdings-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        /* 绩效指标 */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-family: var(--font-mono);
+            font-size: var(--text-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .metric-label {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+        }
+        
+        /* 动画 */
+        .slide-in {
+            animation: slideIn var(--transition-base) ease-out;
+        }
+        
+        .fade-in {
+            animation: fadeIn var(--transition-slow) ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div class="dark-nav-container">
+        <nav class="dark-nav">
+            <!-- 品牌区域 -->
+            <div class="nav-brand">
+                <div class="nav-logo glow-animation">📈</div>
+                <div>
+                    <div class="nav-title">投资组合 · 暗夜模式</div>
+                    <div class="nav-subtitle">持仓总览 · 绩效分析 · 风险管理</div>
+                </div>
+            </div>
+            
+            <!-- 桌面端导航链接 -->
+            <div class="nav-links">
+                <a href="market_dashboard.html" class="nav-link" data-page="market">
+                    <span class="nav-link-icon">📊</span>
+                    <span>大盘扫描</span>
+                </a>
+                <a href="sector_scan_dashboard.html" class="nav-link" data-page="sector">
+                    <span class="nav-link-icon">🏢</span>
+                    <span>行业扫描</span>
+                </a>
+                <a href="stock_screening_dashboard.html" class="nav-link" data-page="stock">
+                    <span class="nav-link-icon">🔍</span>
+                    <span>个股扫描</span>
+                </a>
+                <a href="sell_signal.html" class="nav-link" data-page="sell">
+                    <span class="nav-link-icon">🚨</span>
+                    <span>持仓哨兵</span>
+                </a>
+                <a href="portfolio.html" class="nav-link active" data-page="portfolio">
+                    <span class="nav-link-icon">📈</span>
+                    <span>投资组合</span>
+                </a>
+                <a href="backtest.html" class="nav-link" data-page="backtest">
+                    <span class="nav-link-icon">🧪</span>
+                    <span>策略回测</span>
+                </a>
+            </div>
+            
+            <!-- 控制区域 -->
+            <div class="nav-controls">
+                <!-- 日期选择器 -->
+                <div class="date-picker-container">
+                    <button id="datePickerBtn" class="date-picker-btn">
+                        <span class="icon">📅</span>
+                        <span id="dateDisplay">今日</span>
+                    </button>
+                    <div id="datePickerDropdown" class="date-picker-dropdown">
+                        <div class="date-picker-header">
+                            <div id="currentMonthYear" class="date-picker-title">2025年4月</div>
+                            <div class="date-picker-nav">
+                                <button id="prevMonthBtn" class="date-picker-nav-btn">‹</button>
+                                <button id="nextMonthBtn" class="date-picker-nav-btn">›</button>
+                            </div>
+                        </div>
+                        <div id="datePickerGrid" class="date-picker-grid">
+                            <!-- 日历将通过JavaScript动态生成 -->
+                        </div>
+                        <div class="date-picker-quick-actions">
+                            <button id="quickToday" class="date-picker-quick-action">今日</button>
+                            <button id="quickYesterday" class="date-picker-quick-action">昨日</button>
+                            <button id="quickWeekAgo" class="date-picker-quick-action">一周前</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="nav-divider"></div>
+                
+                <!-- 操作按钮 -->
+                <button class="nav-action-btn" id="refreshBtn">
+                    <span class="nav-action-btn-icon">🔄</span>
+                    <span>刷新</span>
+                </button>
+                
+                <button class="nav-action-btn" id="themeBtn">
+                    <span class="nav-action-btn-icon">🌙</span>
+                    <span>主题</span>
+                </button>
+                
+                <!-- 移动端菜单按钮 -->
+                <button id="navMenuBtn" class="nav-menu-btn">
+                    ☰
+                </button>
+            </div>
+        </nav>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div id="navMobileMenu" class="nav-mobile-menu">
+        <div class="nav-mobile-links">
+            <a href="market_dashboard.html" class="nav-mobile-link" data-page="market">
+                <span class="nav-mobile-link-icon">📊</span>
+                <span>大盘扫描</span>
+            </a>
+            <a href="sector_scan_dashboard.html" class="nav-mobile-link" data-page="sector">
+                <span class="nav-mobile-link-icon">🏢</span>
+                <span>行业扫描</span>
+            </a>
+            <a href="stock_screening_dashboard.html" class="nav-mobile-link" data-page="stock">
+                <span class="nav-mobile-link-icon">🔍</span>
+                <span>个股扫描</span>
+            </a>
+            <a href="sell_signal.html" class="nav-mobile-link" data-page="sell">
+                <span class="nav-mobile-link-icon">🚨</span>
+                <span>持仓哨兵</span>
+            </a>
+            <a href="portfolio.html" class="nav-mobile-link active" data-page="portfolio">
+                <span class="nav-mobile-link-icon">📈</span>
+                <span>投资组合</span>
+            </a>
+            <a href="backtest.html" class="nav-mobile-link" data-page="backtest">
+                <span class="nav-mobile-link-icon">🧪</span>
+                <span>策略回测</span>
+            </a>
+        </div>
+        
+        <div style="padding: var(--space-lg); border-top: 1px solid var(--border-light); margin-top: var(--space-xl);">
+            <div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-bottom: var(--space-sm);">系统信息</div>
+            <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
+                <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                    <span style="color: var(--text-secondary);">当前时间</span>
+                    <span id="currentTime" style="font-family: var(--font-mono); color: var(--text-primary);">--:--:--</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                    <span style="color: var(--text-secondary);">数据版本</span>
+                    <span style="font-family: var(--font-mono); color: var(--text-primary);">2025.04.13</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                    <span style="color: var(--text-secondary);">用户状态</span>
+                    <span style="color: var(--signal-safe);">● 在线</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 页面标题区域 -->
+    <div class="page-header slide-in">
+        <h1 class="page-title">投资组合总览</h1>
+        <div class="page-subtitle">深色主题 · 实时持仓监控 · 绩效分析与风险管理</div>
+    </div>
+    
+    <!-- 页面内容 -->
+    <div class="page-content">
+        <!-- 摘要卡片行 -->
+        <div class="summary-row slide-in">
+            <div class="sum-card highlight">
+                <div class="sum-label">总市值</div>
+                <div class="sum-val">¥ 2,856,420</div>
+                <div class="sum-sub">较昨日 +1.85% (+¥ 48,750)</div>
+            </div>
+            
+            <div class="sum-card profit">
+                <div class="sum-label">总浮盈</div>
+                <div class="sum-val" style="color: var(--data-up);">+¥ 186,540</div>
+                <div class="sum-sub">收益率 +6.98% · 年化 +24.5%</div>
+            </div>
+            
+            <div class="sum-card">
+                <div class="sum-label">现金余额</div>
+                <div class="sum-val">¥ 324,800</div>
+                <div class="sum-sub">可用仓位 11.4% · 建议维持</div>
+            </div>
+            
+            <div class="sum-card loss">
+                <div class="sum-label">今日盈亏</div>
+                <div class="sum-val" style="color: var(--data-down);">-¥ 12,450</div>
+                <div class="sum-sub">受大盘调整影响 · 持仓健康</div>
+            </div>
+        </div>
+        
+        <!-- 绩效指标 -->
+        <div class="metrics-grid slide-in">
+            <div class="metric-card">
+                <div class="metric-value" style="color: var(--data-up);">+24.5%</div>
+                <div class="metric-label">年化收益率</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">1.28</div>
+                <div class="metric-label">夏普比率</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" style="color: var(--signal-warning);">18.2%</div>
+                <div class="metric-label">最大回撤</div>
+            </div>
+        </div>
+        
+        <!-- 主网格 -->
+        <div class="main-grid slide-in">
+            <!-- 左侧列 -->
+            <div class="left-col">
+                <!-- 持仓列表面板 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span>📋</span>
+                            持仓列表
+                        </div>
+                        <div class="panel-badge green">8只股票</div>
+                    </div>
+                    <div class="panel-body">
+                        <!-- 股票行1 -->
+                        <div class="stock-row selected">
+                            <div class="st-avatar up">N</div>
+                            <div class="st-info">
+                                <div class="st-name">宁德时代</div>
+                                <div class="st-code">300750</div>
+                                <div class="alloc-bar">
+                                    <div class="alloc-fill" style="width: 18%; background: var(--data-up);"></div>
+                                </div>
+                            </div>
+                            <div class="st-right">
+                                <div class="st-price">245.80</div>
+                                <div class="st-pnl up">+18.5%</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 股票行2 -->
+                        <div class="stock-row">
+                            <div class="st-avatar dn">Z</div>
+                            <div class="st-info">
+                                <div class="st-name">招商银行</div>
+                                <div class="st-code">600036</div>
+                                <div class="alloc-bar">
+                                    <div class="alloc-fill" style="width: 12%; background: var(--data-down);"></div>
+                                </div>
+                            </div>
+                            <div class="st-right">
+                                <div class="st-price">32.45</div>
+                                <div class="st-pnl dn">-3.2%</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 股票行3 -->
+                        <div class="stock-row">
+                            <div class="st-avatar up">G</div>
+                            <div class="st-info">
+                                <div class="st-name">贵州茅台</div>
+                                <div class="st-code">600519</div>
+                                <div class="alloc-bar">
+                                    <div class="alloc-fill" style="width: 15%; background: var(--data-up);"></div>
+                                </div>
+                            </div>
+                            <div class="st-right">
+                                <div class="st-price">1,680.50</div>
+                                <div class="st-pnl up">+2.1%</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 股票行4 -->
+                        <div class="stock-row">
+                            <div class="st-avatar up">Z</div>
+                            <div class="st-info">
+                                <div class="st-name">兆易创新</div>
+                                <div class="st-code">603986</div>
+                                <div class="alloc-bar">
+                                    <div class="alloc-fill" style="width: 10%; background: var(--data-up);"></div>
+                                </div>
+                            </div>
+                            <div class="st-right">
+                                <div class="st-price">88.75</div>
+                                <div class="st-pnl up">+24.8%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="action-bar">
+                        <button class="abtn">
+                            <span>➕</span>
+                            添加持仓
+                        </button>
+                        <button class="abtn">
+                            <span>📊</span>
+                            调整仓位
+                        </button>
+                        <button class="abtn primary" style="margin-left: auto;">
+                            <span>💾</span>
+                            保存变更
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 信号汇总面板 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span>🚨</span>
+                            风险信号
+                        </div>
+                        <div class="panel-badge amber">3个警告</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="sig-summary">
+                            <div class="sig-chip strong">大盘抛盘日</div>
+                            <div class="sig-chip moderate">铁路轨道信号</div>
+                            <div class="sig-chip strong">双重顶形态</div>
+                            <div class="sig-chip normal">RS强势</div>
+                            <div class="sig-chip moderate">成交量萎缩</div>
+                        </div>
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-top: var(--space-md); line-height: 1.5;">
+                            ⚠️ 当前持仓面临大盘调整风险，建议对涨幅较大个股减仓，保留现金等待更好机会。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧列 -->
+            <div class="right-col">
+                <!-- 图表面板 -->
+                <div class="panel chart-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span>📈</span>
+                            绩效图表
+                        </div>
+                        <div class="panel-badge green">表现优异</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="portfolioChart"></div>
+                    </div>
+                </div>
+                
+                <!-- 详细持仓表 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span>📊</span>
+                            详细持仓
+                        </div>
+                        <div class="panel-badge">明细</div>
+                    </div>
+                    <div class="panel-body">
+                        <table class="holdings-table">
+                            <thead>
+                                <tr>
+                                    <th>股票</th>
+                                    <th>持仓</th>
+                                    <th>成本</th>
+                                    <th>现价</th>
+                                    <th>盈亏</th>
+                                    <th>权重</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-weight: var(--font-weight-semibold);">宁德时代</td>
+                                    <td>800股</td>
+                                    <td>207.50</td>
+                                    <td style="color: var(--text-primary); font-weight: var(--font-weight-semibold);">245.80</td>
+                                    <td style="color: var(--data-up); font-weight: var(--font-weight-bold);">+18.5%</td>
+                                    <td>18.0%</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: var(--font-weight-semibold);">贵州茅台</td>
+                                    <td>50股</td>
+                                    <td>1,645.00</td>
+                                    <td style="color: var(--text-primary); font-weight: var(--font-weight-semibold);">1,680.50</td>
+                                    <td style="color: var(--data-up); font-weight: var(--font-weight-bold);">+2.1%</td>
+                                    <td>15.0%</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: var(--font-weight-semibold);">招商银行</td>
+                                    <td>2,000股</td>
+                                    <td>33.50</td>
+                                    <td style="color: var(--text-primary); font-weight: var(--font-weight-semibold);">32.45</td>
+                                    <td style="color: var(--data-down); font-weight: var(--font-weight-bold);">-3.2%</td>
+                                    <td>12.0%</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: var(--font-weight-semibold);">兆易创新</td>
+                                    <td>1,200股</td>
+                                    <td>71.20</td>
+                                    <td style="color: var(--text-primary); font-weight: var(--font-weight-semibold);">88.75</td>
+                                    <td style="color: var(--data-up); font-weight: var(--font-weight-bold);">+24.8%</td>
+                                    <td>10.0%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 统一导航JavaScript -->
+    <script src="../static/dark_nav.js"></script>
+    
+    <script>
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化ECharts图表
+            initPortfolioChart();
+            
+            // 股票行点击交互
+            document.querySelectorAll('.stock-row').forEach(row => {
+                row.addEventListener('click', function() {
+                    document.querySelectorAll('.stock-row').forEach(r => r.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    const stockName = this.querySelector('.st-name').textContent;
+                    const stockCode = this.querySelector('.st-code').textContent;
+                    console.log(`选中股票: ${stockName} (${stockCode})`);
+                });
+            });
+            
+            // 按钮交互
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                this.style.transform = 'rotate(360deg)';
+                this.style.transition = 'transform 0.5s ease';
+                
+                setTimeout(() => {
+                    this.style.transform = '';
+                    console.log('刷新投资组合数据');
+                    // 实际应用中这里会重新加载数据
+                }, 500);
+            });
+            
+            // 主题切换
+            document.getElementById('themeBtn').addEventListener('click', function() {
+                const icon = this.querySelector('.nav-action-btn-icon');
+                if (icon.textContent === '🌙') {
+                    icon.textContent = '☀️';
+                    this.querySelector('span:last-child').textContent = '亮色';
+                } else {
+                    icon.textContent = '🌙';
+                    this.querySelector('span:last-child').textContent = '主题';
+                }
+                console.log('切换主题');
+            });
+            
+            // 页面加载动画
+            setTimeout(() => {
+                document.body.style.opacity = '0';
+                document.body.style.transition = 'opacity 0.5s ease-out';
+                
+                setTimeout(() => {
+                    document.body.style.opacity = '1';
+                }, 100);
+            }, 100);
+        });
+        
+        // 初始化投资组合图表
+        function initPortfolioChart() {
+            const chartDom = document.getElementById('portfolioChart');
+            if (!chartDom) return;
+            
+            const chart = echarts.init(chartDom);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    borderColor: 'rgba(96, 165, 250, 0.3)',
+                    textStyle: {
+                        color: '#f1f5f9'
+                    }
+                },
+                legend: {
+                    data: ['组合净值', '沪深300'],
+                    textStyle: {
+                        color: '#cbd5e1'
+                    },
+                    top: 10
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(148, 163, 184, 0.3)'
+                        }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(148, 163, 184, 0.3)'
+                        }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        formatter: '{value}%'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(148, 163, 184, 0.1)',
+                            type: 'dashed'
+                        }
+                    }
+                },
+                series: [
+                    {
+                        name: '组合净值',
+                        type: 'line',
+                        smooth: true,
+                        lineStyle: {
+                            width: 3,
+                            color: '#60a5fa'
+                        },
+                        itemStyle: {
+                            color: '#60a5fa'
+                        },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(96, 165, 250, 0.3)' },
+                                { offset: 1, color: 'rgba(96, 165, 250, 0.05)' }
+                            ])
+                        },
+                        data: [0, 2.5, 5.8, 8.2, 12.5, 15.8, 18.2, 20.5, 22.8, 24.5, 26.2, 24.8]
+                    },
+                    {
+                        name: '沪深300',
+                        type: 'line',
+                        smooth: true,
+                        lineStyle: {
+                            width: 2,
+                            color: '#94a3b8',
+                            type: 'dashed'
+                        },
+                        itemStyle: {
+                            color: '#94a3b8'
+                        },
+                        data: [0, 1.2, 3.5, 5.8, 8.2, 10.5, 12.8, 14.2, 16.5, 18.8, 20.2, 18.5]
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+            
+            // 响应窗口大小变化
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+    </script>
+</body>
+</html>

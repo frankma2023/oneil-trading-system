@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个股扫描 · 暗夜热力图</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- 使用工业风格的字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* ====== 暗夜数据美学：深色毛玻璃个股扫描 ====== */
+        :root {
+            /* 核心色彩系统：深色主题 */
+            --surface-primary: #0f172a;
+            --surface-secondary: #1e293b;
+            --surface-tertiary: #334155;
+            --surface-elevated: rgba(30, 41, 59, 0.7);
+            --surface-glass: rgba(30, 41, 59, 0.4);
+            
+            /* 边界系统：深色边界 */
+            --border-light: rgba(71, 85, 105, 0.3);
+            --border-medium: rgba(71, 85, 105, 0.5);
+            --border-strong: rgba(71, 85, 105, 0.7);
+            --border-glow: rgba(59, 130, 246, 0.3);
+            
+            /* 数据语义色彩 */
+            --data-critical: #f87171;     /* 严重负面：亮红 */
+            --data-warning: #fb923c;      /* 警告：亮橙 */
+            --data-neutral: #94a3b8;      /* 中性：浅石板色 */
+            --data-positive: #4ade80;     /* 正面：亮绿 */
+            --data-strong: #60a5fa;       /* 强正面：亮蓝 */
+            --data-excellent: #22d3ee;    /* 优异：亮青色 */
+            
+            /* 等级颜色 */
+            --grade-a: #4ade80;    /* A级：绿色 */
+            --grade-b: #60a5fa;    /* B级：蓝色 */
+            --grade-c: #fbbf24;    /* C级：黄色 */
+            --grade-d: #f87171;    /* D级：红色 */
+            
+            /* 评分颜色 */
+            --score-high: #4ade80;     /* 高分 */
+            --score-medium: #60a5fa;   /* 中分 */
+            --score-low: #fbbf24;      /* 低分 */
+            --score-poor: #f87171;     /* 差分 */
+            
+            /* 热力图梯度 */
+            --heat-gradient-0: #dc2626;
+            --heat-gradient-1: #ef4444;
+            --heat-gradient-2: #f87171;
+            --heat-gradient-3: #fca5a5;
+            --heat-gradient-4: #fecaca;
+            --heat-gradient-5: rgba(71, 85, 105, 0.5);
+            --heat-gradient-6: #86efac;
+            --heat-gradient-7: #4ade80;
+            --heat-gradient-8: #22c55e;
+            --heat-gradient-9: #16a34a;
+            
+            /* 字体系统 */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            
+            /* 空间系统 */
+            --radius-sm: 2px;
+            --radius-md: 4px;
+            --radius-lg: 6px;
+            --radius-xl: 8px;
+            
+            /* 阴影系统 */
+            --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.5);
+            --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.7);
+            --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+            
+            /* 毛玻璃效果 */
+            --glass-blur: blur(12px);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            
+            /* 动画系统 */
+            --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ====== BASE ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            font-size: 13px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            line-height: 1.5;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            min-height: 100vh;
+        }
+        
+        /* 添加微妙的网格背景 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* ====== LAYOUT ====== */
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+        
+        .grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        
+        /* ====== HEADER：暗夜控制台风格 ====== */
+        .console-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--border-light);
+            padding: 12px 0;
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .console-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .console-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .console-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 1.1rem;
+            letter-spacing: -0.5px;
+            box-shadow: 0 0 12px rgba(96, 165, 250, 0.4);
+        }
+        
+        .console-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #f1f5f9;
+            letter-spacing: -0.01em;
+        }
+        
+        .console-subtitle {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+            font-family: var(--font-mono);
+        }
+        
+        .console-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .control-button {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-light);
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .control-button:hover {
+            background: rgba(51, 65, 85, 0.5);
+            border-color: var(--border-glow);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .control-button.active {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: #0f172a;
+            border-color: transparent;
+            font-weight: 600;
+        }
+        
+        /* ====== 统计卡片 ====== */
+        .stats-bar {
+            margin: 20px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .stat-card {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: var(--transition-base);
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .stat-card:hover {
+            box-shadow: var(--shadow-elevated);
+            border-color: var(--border-glow);
+            transform: translateY(-4px);
+        }
+        
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .stat-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            color: #0f172a;
+        }
+        
+        .stat-icon.green { background: linear-gradient(135deg, #4ade80, #60a5fa); }
+        .stat-icon.blue { background: linear-gradient(135deg, #60a5fa, #a78bfa); }
+        .stat-icon.purple { background: linear-gradient(135deg, #a78bfa, #f87171); }
+        .stat-icon.amber { background: linear-gradient(135deg, #fbbf24, #fb923c); }
+        
+        .stat-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #f1f5f9;
+        }
+        
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.8rem;
+            font-weight: 600;
+            line-height: 1;
+            margin: 4px 0;
+            color: #f1f5f9;
+        }
+        
+        /* ====== 主内容布局 ====== */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* ====== 表格面板 ====== */
+        .table-panel {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: var(--shadow-medium);
+            transition: var(--transition-base);
+        }
+        
+        .table-panel:hover {
+            box-shadow: var(--shadow-elevated);
+            border-color: var(--border-glow);
+        }
+        
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 4px;
+        }
+        
+        .tab {
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.72rem;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .tab:hover {
+            color: #f1f5f9;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(167, 139, 250, 0.1));
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+        
+        .count {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+        
+        .search-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 6px 12px;
+            font-family: var(--font-body);
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            min-width: 180px;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .filter-select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 6px 12px;
+            font-family: var(--font-body);
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            min-width: 120px;
+        }
+        
+        /* ====== 表格样式 ====== */
+        .table-scroll {
+            overflow: auto;
+            max-height: 600px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        
+        th {
+            position: sticky;
+            top: 0;
+            background: rgba(30, 41, 59, 0.9);
+            color: #cbd5e1;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            border-bottom: 1px solid var(--border-medium);
+            white-space: nowrap;
+            z-index: 1;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border-light);
+            vertical-align: middle;
+            white-space: nowrap;
+            color: #e2e8f0;
+        }
+        
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        tr.selected {
+            background: rgba(96, 165, 250, 0.15);
+        }
+        
+        /* ====== 星标按钮 ====== */
+        .star-btn {
+            cursor: pointer;
+            font-size: 1rem;
+            border: none;
+            background: none;
+            padding: 0;
+            line-height: 1;
+            color: #94a3b8;
+            transition: var(--transition-fast);
+        }
+        
+        .star-btn:hover {
+            transform: scale(1.2);
+            color: #fbbf24;
+        }
+        
+        .star-btn.starred {
+            color: #fbbf24;
+        }
+        
+        /* ====== 等级徽章 ====== */
+        .grade-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #0f172a;
+            text-align: center;
+            min-width: 30px;
+        }
+        
+        .grade-a { background: var(--grade-a); }
+        .grade-b { background: var(--grade-b); }
+        .grade-c { background: var(--grade-c); }
+        .grade-d { background: var(--grade-d); }
+        
+        /* ====== 评分条 ====== */
+        .score-bar {
+            width: 50px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width var(--transition-slow);
+        }
+        
+        .score-green { background: var(--score-high); }
+        .score-blue { background: var(--score-medium); }
+        .score-amber { background: var(--score-low); }
+        .score-poor { background: var(--score-poor); }
+        
+        /* ====== 详细面板 ====== */
+        .detail-panel {
+            background: var(--surface-glass);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-medium);
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            transition: var(--transition-base);
+        }
+        
+        .detail-panel:hover {
+            box-shadow: var(--shadow-elevated);
+            border-color: var(--border-glow);
+        }
+        
+        .detail-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .detail-stock-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .detail-stock-code {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
+        .detail-section {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .detail-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 8px;
+        }
+        
+        .score-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 0.8rem;
+        }
+        
+        .score-item-label {
+            font-size: 0.75rem;
+            color: #cbd5e1;
+        }
+        
+        .score-item-value {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .score-item-value.high { color: var(--score-high); }
+        .score-item-value.mid { color: var(--score-medium); }
+        .score-item-value.low { color: var(--score-low); }
+        
+        .composite-big {
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 8px 0;
+            color: #f1f5f9;
+        }
+        
+        .composite-label {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+        
+        .no-selection {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        
+        .no-selection .icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+        
+        /* ====== 行业标签 ====== */
+        .industry-tag {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            background: rgba(148, 163, 184, 0.1);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        /* ====== 操作卡片 ====== */
+        .action-card {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-top: 12px;
+        }
+        
+        .action-card.grade-b {
+            background: rgba(96, 165, 250, 0.1);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        
+        .action-card.grade-c {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+        
+        .action-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+        
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 0;
+            font-size: 0.75rem;
+            color: #cbd5e1;
+        }
+        
+        .action-row .val {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 0.8rem;
+        }
+        
+        .risk-note {
+            font-size: 0.7rem;
+            color: var(--score-low);
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px dashed var(--border-light);
+        }
+        
+        /* ====== 交叉信号卡片 ====== */
+        .cross-signal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            margin-top: 8px;
+            border: 1px solid;
+        }
+        
+        .cross-signal.strongest {
+            background: rgba(248, 113, 113, 0.1);
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+        
+        .cross-signal.strong {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+        
+        .cross-signal.medium {
+            background: rgba(74, 222, 128, 0.1);
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+        
+        .cross-signal.weak {
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+        
+        .signal-icon {
+            font-size: 1.1rem;
+        }
+        
+        .signal-text {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .signal-desc {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-left: auto;
+        }
+        
+        /* ====== 响应式设计 ====== */
+        @media (max-width: 1400px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .console-nav {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .table-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-input, .filter-select {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 12px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .detail-panel {
+                max-height: none;
+            }
+        }
+        
+        /* ====== 动画 ====== */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .live-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn var(--transition-base) ease-out;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(96, 165, 250, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(96, 165, 250, 0.6); }
+        }
+        
+        .glow-animation {
+            animation: glow 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 控制台头部 -->
+    <header class="console-header">
+        <div class="container console-nav">
+            <div class="console-brand">
+                <div class="console-logo glow-animation">🔍</div>
+                <div>
+                    <div class="console-title">个股扫描 · 暗夜热力图</div>
+                    <div class="console-subtitle">深色主题 · 毛玻璃效果 · 实时个股筛选</div>
+                </div>
+            </div>
+            
+            <div class="console-controls">
+                <button class="control-button active">
+                    <span>📈</span>
+                    个股扫描
+                </button>
+                <button class="control-button">
+                    <span>🌙</span>
+                    暗夜模式
+                </button>
+                <button class="control-button">
+                    <span>⭐</span>
+                    自选股
+                </button>
+                <div style="width: 1px; height: 20px; background: var(--border-light);"></div>
+                <button class="control-button">
+                    <span>🔄</span>
+                    刷新数据
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主容器 -->
+    <main class="container">
+        <!-- 统计卡片 -->
+        <section class="stats-bar slide-in">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">候选总数</span>
+                        <div class="stat-icon blue">📊</div>
+                    </div>
+                    <div class="stat-value" style="color: #60a5fa;">142</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">A 级股</span>
+                        <div class="stat-icon green">🏆</div>
+                    </div>
+                    <div class="stat-value" style="color: #4ade80;">28</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">B 级股</span>
+                        <div class="stat-icon purple">⭐</div>
+                    </div>
+                    <div class="stat-value" style="color: #a78bfa;">56</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">C 级股</span>
+                        <div class="stat-icon amber">📋</div>
+                    </div>
+                    <div class="stat-value" style="color: #fbbf24;">58</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <!-- 表格面板 -->
+            <div class="table-panel slide-in">
+                <div class="table-toolbar">
+                    <div class="tab-bar">
+                        <div class="tab active" data-tab="all">全部<span class="count">142</span></div>
+                        <div class="tab" data-tab="A">A<span class="count">28</span></div>
+                        <div class="tab" data-tab="B">B<span class="count">56</span></div>
+                        <div class="tab" data-tab="C">C<span class="count">58</span></div>
+                        <div class="tab" data-tab="dual">双强<span class="count">18</span></div>
+                        <div class="tab" data-tab="L1">行业L1<span class="count">24</span></div>
+                        <div class="tab" data-tab="watchlist">★自选<span class="count">12</span></div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="searchInput" class="search-input" placeholder="搜索代码/名称...">
+                        <select id="industryFilter" class="filter-select">
+                            <option value="">全部行业</option>
+                            <option value="半导体">半导体</option>
+                            <option value="新能源">新能源</option>
+                            <option value="医药">医药</option>
+                            <option value="金融">金融</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="table-scroll">
+                    <table id="mainTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px"></th>
+                                <th data-sort="stock_code">代码</th>
+                                <th data-sort="stock_name">名称</th>
+                                <th data-sort="industry_name">行业</th>
+                                <th data-sort="composite_score">综合</th>
+                                <th data-sort="grade">等级</th>
+                                <th data-sort="rs_score">RS</th>
+                                <th data-sort="fundamental_score">基本面</th>
+                                <th data-sort="vol_price_score">量价</th>
+                                <th data-sort="pattern_score">形态</th>
+                                <th data-sort="rs_pattern">双强</th>
+                                <th data-sort="industry_grade">行业评级</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 示例数据行 -->
+                            <tr class="selected">
+                                <td><button class="star-btn starred">★</button></td>
+                                <td><span style="font-family: var(--font-mono); font-weight: 600;">300750</span></td>
+                                <td style="font-weight: 600;">宁德时代</td>
+                                <td><span class="industry-tag">新能源</span></td>
+                                <td>
+                                    <div class="score-bar"><div class="score-bar-fill score-green" style="width: 88%;"></div></div>
+                                    <span style="font-family: var(--font-mono); font-weight: 600; color: #4ade80;">88</span>
+                                </td>
+                                <td><span class="grade-badge grade-a">A</span></td>
+                                <td style="color: #4ade80; font-weight: 600;">92</td>
+                                <td style="color: #60a5fa; font-weight: 600;">85</td>
+                                <td style="color: #4ade80; font-weight: 600;">90</td>
+                                <td style="color: #fbbf24; font-weight: 600;">78</td>
+                                <td><span class="grade-badge grade-a" style="background: #f87171; color: white;">双强</span></td>
+                                <td><span class="grade-badge grade-a">A</span></td>
+                            </tr>
+                            
+                            <tr>
+                                <td><button class="star-btn">☆</button></td>
+                                <td><span style="font-family: var(--font-mono); font-weight: 600;">603986</span></td>
+                                <td style="font-weight: 600;">兆易创新</td>
+                                <td><span class="industry-tag">半导体</span></td>
+                                <td>
+                                    <div class="score-bar"><div class="score-bar-fill score-green" style="width: 85%;"></div></div>
+                                    <span style="font-family: var(--font-mono); font-weight: 600; color: #4ade80;">85</span>
+                                </td>
+                                <td><span class="grade-badge grade-a">A</span></td>
+                                <td style="color: #4ade80; font-weight: 600;">88</td>
+                                <td style="color: #60a5fa; font-weight: 600;">82</td>
+                                <td style="color: #4ade80; font-weight: 600;">86</td>
+                                <td style="color: #fbbf24; font-weight: 600;">80</td>
+                                <td><span class="grade-badge grade-a" style="background: #f87171; color: white;">双强</span></td>
+                                <td><span class="grade-badge grade-a">A</span></td>
+                            </tr>
+                            
+                            <tr>
+                                <td><button class="star-btn">☆</button></td>
+                                <td><span style="font-family: var(--font-mono); font-weight: 600;">002415</span></td>
+                                <td style="font-weight: 600;">海康威视</td>
+                                <td><span class="industry-tag">信息技术</span></td>
+                                <td>
+                                    <div class="score-bar"><div class="score-bar-fill score-blue" style="width: 72%;"></div></div>
+                                    <span style="font-family: var(--font-mono); font-weight: 600; color: #60a5fa;">72</span>
+                                </td>
+                                <td><span class="grade-badge grade-b">B</span></td>
+                                <td style="color: #60a5fa; font-weight: 600;">75</td>
+                                <td style="color: #60a5fa; font-weight: 600;">78</td>
+                                <td style="color: #60a5fa; font-weight: 600;">70</td>
+                                <td style="color: #fbbf24; font-weight: 600;">65</td>
+                                <td><span style="color: #94a3b8; font-size: 0.7rem;">--</span></td>
+                                <td><span class="grade-badge grade-b">B</span></td>
+                            </tr>
+                            
+                            <tr>
+                                <td><button class="star-btn starred">★</button></td>
+                                <td><span style="font-family: var(--font-mono); font-weight: 600;">600036</span></td>
+                                <td style="font-weight: 600;">招商银行</td>
+                                <td><span class="industry-tag">金融</span></td>
+                                <td>
+                                    <div class="score-bar"><div class="score-bar-fill score-amber" style="width: 58%;"></div></div>
+                                    <span style="font-family: var(--font-mono); font-weight: 600; color: #fbbf24;">58</span>
+                                </td>
+                                <td><span class="grade-badge grade-c">C</span></td>
+                                <td style="color: #fbbf24; font-weight: 600;">62</td>
+                                <td style="color: #60a5fa; font-weight: 600;">65</td>
+                                <td style="color: #f87171; font-weight: 600;">48</td>
+                                <td style="color: #f87171; font-weight: 600;">45</td>
+                                <td><span style="color: #94a3b8; font-size: 0.7rem;">--</span></td>
+                                <td><span class="grade-badge grade-d">D</span></td>
+                            </tr>
+                            
+                            <tr>
+                                <td><button class="star-btn">☆</button></td>
+                                <td><span style="font-family: var(--font-mono); font-weight: 600;">000858</span></td>
+                                <td style="font-weight: 600;">五粮液</td>
+                                <td><span class="industry-tag">消费</span></td>
+                                <td>
+                                    <div class="score-bar"><div class="score-bar-fill score-blue" style="width: 68%;"></div></div>
+                                    <span style="font-family: var(--font-mono); font-weight: 600; color: #60a5fa;">68</span>
+                                </td>
+                                <td><span class="grade-badge grade-b">B</span></td>
+                                <td style="color: #60a5fa; font-weight: 600;">70</td>
+                                <td style="color: #60a5fa; font-weight: 600;">72</td>
+                                <td style="color: #60a5fa; font-weight: 600;">65</td>
+                                <td style="color: #fbbf24; font-weight: 600;">62</td>
+                                <td><span style="color: #94a3b8; font-size: 0.7rem;">--</span></td>
+                                <td><span class="grade-badge grade-c">C</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 详细面板 -->
+            <div class="detail-panel slide-in" id="detailPanel">
+                <div class="detail-header">
+                    <div class="detail-stock-name">宁德时代</div>
+                    <div class="detail-stock-code">300750</div>
+                    <div><span class="industry-tag">新能源</span></div>
+                    <div style="margin-left: auto;"><span class="grade-badge grade-a">A级</span></div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-section-title">综合评分</div>
+                    <div class="composite-big" style="color: #4ade80;">88</div>
+                    <div class="composite-label">基于RS、基本面、量价、形态的综合评估</div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-section-title">各项评分</div>
+                    <div class="score-grid">
+                        <div class="score-item">
+                            <span class="score-item-label">RS评分</span>
+                            <span class="score-item-value high">92</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-item-label">基本面</span>
+                            <span class="score-item-value mid">85</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-item-label">量价配合</span>
+                            <span class="score-item-value high">90</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-item-label">形态评分</span>
+                            <span class="score-item-value low">78</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-section-title">相对强度</div>
+                    <div class="score-grid">
+                        <div class="score-item">
+                            <span class="score-item-label">RS250</span>
+                            <span class="score-item-value high">95</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-item-label">RS120</span>
+                            <span class="score-item-value high">92</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-item-label">RS20</span>
+                            <span class="score-item-value high">88</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-item-label">行业RS</span>
+                            <span class="score-item-value high">88</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-section-title">操作建议</div>
+                    <div class="action-card grade-a">
+                        <div class="action-title">📈 强烈关注</div>
+                        <div class="action-row">
+                            <span>建议仓位</span>
+                            <span class="val">8-10%</span>
+                        </div>
+                        <div class="action-row">
+                            <span>目标价位</span>
+                            <span class="val">285.50</span>
+                        </div>
+                        <div class="action-row">
+                            <span>止损价位</span>
+                            <span class="val">225.80</span>
+                        </div>
+                        <div class="risk-note">
+                            ⚠️ 注意：当前处于突破关键位置，需关注成交量配合
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-section-title">信号分析</div>
+                    <div class="cross-signal strongest">
+                        <div class="signal-icon">🔥</div>
+                        <div class="signal-text">RS+行业双强信号</div>
+                        <div class="signal-desc">最强级别</div>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 0.75rem; color: #94a3b8;">
+                        个股RS与行业RS同时处于强势区间，形成共振效应
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 表格行点击交互
+            document.querySelectorAll('#mainTable tbody tr').forEach(row => {
+                row.addEventListener('click', function() {
+                    // 移除其他行的选中状态
+                    document.querySelectorAll('#mainTable tr.selected').forEach(r => {
+                        r.classList.remove('selected');
+                    });
+                    
+                    // 添加当前行的选中状态
+                    this.classList.add('selected');
+                    
+                    // 这里实际应用中会更新详细面板数据
+                    const stockName = this.cells[2].textContent;
+                    const stockCode = this.cells[1].textContent;
+                    console.log(`选择股票: ${stockName} (${stockCode})`);
+                });
+            });
+            
+            // 星标按钮交互
+            document.querySelectorAll('.star-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 防止触发行点击事件
+                    
+                    if (this.classList.contains('starred')) {
+                        this.classList.remove('starred');
+                        this.textContent = '☆';
+                        this.style.color = '#94a3b8';
+                    } else {
+                        this.classList.add('starred');
+                        this.textContent = '★';
+                        this.style.color = '#fbbf24';
+                    }
+                    
+                    // 视觉反馈
+                    this.style.transform = 'scale(1.2)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            });
+            
+            // 标签页切换
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const tabName = this.getAttribute('data-tab');
+                    console.log(`切换到标签: ${tabName}`);
+                    
+                    // 视觉反馈
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            });
+            
+            // 搜索框交互
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                console.log(`搜索: ${searchTerm}`);
+                
+                // 这里实际应用中会过滤表格数据
+            });
+            
+            // 行业筛选交互
+            const industryFilter = document.getElementById('industryFilter');
+            industryFilter.addEventListener('change', function() {
+                const selectedIndustry = this.value;
+                console.log(`筛选行业: ${selectedIndustry}`);
+            });
+            
+            // 控制台按钮交互
+            document.querySelectorAll('.control-button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!this.classList.contains('active')) {
+                        document.querySelectorAll('.control-button').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                    }
+                    
+                    // 视觉反馈
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            });
+            
+            // 表格排序功能
+            document.querySelectorAll('#mainTable th[data-sort]').forEach(th => {
+                th.addEventListener('click', function() {
+                    const sortKey = this.getAttribute('data-sort');
+                    console.log(`按 ${sortKey} 排序`);
+                    
+                    // 这里实际应用中会触发排序
+                });
+            });
+            
+            // 模拟实时数据更新
+            setInterval(() => {
+                const timeElement = document.querySelector('.console-subtitle');
+                if (timeElement) {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('zh-CN', { 
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    timeElement.textContent = `深色主题 · 毛玻璃效果 · 更新于 ${timeStr}`;
+                }
+            }, 5000);
+            
+            // 卡片悬停效果
+            document.querySelectorAll('.stat-card, .table-panel, .detail-panel').forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-4px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
+                });
+            });
+            
+            // 初始化页面
+            setTimeout(() => {
+                document.body.style.opacity = '0';
+                document.body.style.transition = 'opacity 0.5s ease-out';
+                
+                setTimeout(() => {
+                    document.body.style.opacity = '1';
+                }, 100);
+            }, 100);
+        });
+    </script>
+</body>
+</html>
